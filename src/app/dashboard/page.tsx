@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -11,6 +10,8 @@ import {
   ArrowUpRight, ArrowDownRight, Wind, Droplets, Trash2, Volume2 
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const lineData = [
   { name: 'Jan', reports: 400 },
@@ -64,7 +65,7 @@ export default function Dashboard() {
               <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
                 <stat.icon className="w-5 h-5 text-primary" />
               </div>
-              <div className={`flex items-center gap-1 text-xs font-bold ${stat.up ? 'text-primary' : 'text-red-400'}`}>
+              <div className={cn("flex items-center gap-1 text-xs font-bold", stat.up ? 'text-primary' : 'text-red-400')}>
                 {stat.change} {stat.up ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
               </div>
             </div>
@@ -88,8 +89,8 @@ export default function Dashboard() {
               <AreaChart data={lineData}>
                 <defs>
                   <linearGradient id="colorReports" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#00FF9F" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#00FF9F" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
@@ -97,18 +98,18 @@ export default function Dashboard() {
                   dataKey="name" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 12}}
+                  tick={{fill: 'currentColor', opacity: 0.5, fontSize: 12}}
                 />
                 <YAxis 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 12}}
+                  tick={{fill: 'currentColor', opacity: 0.5, fontSize: 12}}
                 />
                 <Tooltip 
-                  contentStyle={{backgroundColor: '#1A2821', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px'}}
-                  itemStyle={{color: '#00FF9F'}}
+                  contentStyle={{backgroundColor: 'hsl(var(--card))', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px'}}
+                  itemStyle={{color: 'hsl(var(--primary))'}}
                 />
-                <Area type="monotone" dataKey="reports" stroke="#00FF9F" fillOpacity={1} fill="url(#colorReports)" />
+                <Area type="monotone" dataKey="reports" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorReports)" />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
@@ -137,8 +138,8 @@ export default function Dashboard() {
                   ))}
                 </Pie>
                 <Tooltip 
-                  contentStyle={{backgroundColor: '#1A2821', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px'}}
-                  itemStyle={{color: '#fff'}}
+                  contentStyle={{backgroundColor: 'hsl(var(--card))', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px'}}
+                  itemStyle={{color: 'currentColor'}}
                 />
               </PieChart>
             </ResponsiveContainer>

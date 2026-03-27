@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,21 +10,21 @@
     --card-foreground: 150 20% 5%;
     --popover: 0 0% 100%;
     --popover-foreground: 150 20% 5%;
-    --primary: 157 100% 50%; /* Neon Green #00FF9F */
-    --primary-foreground: 150 20% 5%;
+    --primary: 142 71% 25%; /* Deep Forest Green for high contrast in light mode */
+    --primary-foreground: 0 0% 100%;
     --secondary: 150 15% 90%;
     --secondary-foreground: 150 20% 5%;
     --muted: 150 10% 95%;
     --muted-foreground: 150 10% 40%;
-    --accent: 157 60% 60%; /* Luminous Teal #5AD8A7 fallback */
-    --accent-foreground: 150 20% 5%;
+    --accent: 142 45% 40%; 
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 150 15% 90%;
     --input: 150 15% 90%;
-    --ring: 157 100% 50%;
+    --ring: 142 71% 25%;
     --radius: 1rem;
-    --chart-1: 157 100% 50%;
+    --chart-1: 142 71% 25%;
     --chart-2: 180 100% 40%;
     --chart-3: 200 100% 30%;
     --chart-4: 40 100% 50%;
@@ -39,7 +38,7 @@
     --card-foreground: 0 0% 98%;
     --popover: 150 21% 8%;
     --popover-foreground: 0 0% 98%;
-    --primary: 157 100% 50%; /* Neon Green #00FF9F */
+    --primary: 157 100% 50%; /* Neon Green #00FF9F kept for Dark Mode */
     --primary-foreground: 150 21% 8%;
     --secondary: 150 21% 18%;
     --secondary-foreground: 0 0% 98%;

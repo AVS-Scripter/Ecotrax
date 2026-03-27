@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -6,7 +5,7 @@ import { Trophy, Users, Star, Target, ArrowUp, Zap, Calendar, Heart } from 'luci
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { cn } from '@/lib/utils';
 
 const challenges = [
   { id: 1, title: 'Plant 50 Trees', category: 'Growth', progress: 75, participants: 124, deadline: '5 days left', icon: Zap },
@@ -138,7 +137,7 @@ export default function CommunityPage() {
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Ecotrax is a non-profit open data platform. Help us keep the servers running and sensors deployed.
               </p>
-              <Button size="sm" className="w-full rounded-xl bg-white text-background hover:bg-white/90">Donate Now</Button>
+              <Button size="sm" className="w-full rounded-xl bg-white dark:bg-white text-background hover:bg-white/90">Donate Now</Button>
             </div>
           </div>
         </div>
