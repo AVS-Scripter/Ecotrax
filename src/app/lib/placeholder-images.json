@@ -1,0 +1,29 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "hero-eco",
+      "description": "Futuristic clean city with green energy",
+      "imageUrl": "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?q=80&w=2070&auto=format&fit=crop",
+      "imageHint": "green energy city"
+    },
+    {
+      "id": "pollution-air",
+      "description": "Air pollution from factory",
+      "imageUrl": "https://images.unsplash.com/photo-1521495084171-3ad639e3d525?q=80&w=2070&auto=format&fit=crop",
+      "imageHint": "air pollution"
+    },
+    {
+      "id": "community-cleanup",
+      "description": "Community volunteers cleaning a park",
+      "imageUrl": "https://images.unsplash.com/photo-1558449028-b53a39d100fc?q=80&w=1974&auto=format&fit=crop",
+      "imageHint": "community cleanup"
+    },
+    {
+      "id": "user-avatar-1",
+      "description": "User profile avatar",
+      "imageUrl": "https://picsum.photos/seed/user1/200/200",
+      "imageHint": "person portrait"
+    }
+  ]
+}
