@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,7 +11,7 @@
     --card-foreground: 150 20% 5%;
     --popover: 0 0% 100%;
     --popover-foreground: 150 20% 5%;
-    --primary: 142 71% 25%; /* Deep Forest Green for high contrast in light mode */
+    --primary: 142 72% 29%; /* Earthy Forest Green for high contrast in light mode */
     --primary-foreground: 0 0% 100%;
     --secondary: 150 15% 90%;
     --secondary-foreground: 150 20% 5%;
@@ -22,9 +23,9 @@
     --destructive-foreground: 0 0% 98%;
     --border: 150 15% 90%;
     --input: 150 15% 90%;
-    --ring: 142 71% 25%;
+    --ring: 142 72% 29%;
     --radius: 1rem;
-    --chart-1: 142 71% 25%;
+    --chart-1: 142 72% 29%;
     --chart-2: 180 100% 40%;
     --chart-3: 200 100% 30%;
     --chart-4: 40 100% 50%;
@@ -32,7 +33,7 @@
   }
 
   .dark {
-    --background: 150 21% 12%; /* Deep Green Gray #1A2821 equivalent */
+    --background: 150 21% 12%; 
     --foreground: 0 0% 98%;
     --card: 150 21% 10%;
     --card-foreground: 0 0% 98%;

@@ -4,7 +4,11 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Leaf, Shield, Map as MapIcon, Globe, BarChart3, AlertTriangle } from 'lucide-react';
+import { 
+  ArrowRight, Leaf, Shield, Map as MapIcon, Globe, 
+  BarChart3, AlertTriangle, Sun, Thermometer, 
+  Droplets, CloudRain, Wind 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
@@ -81,18 +85,67 @@ export default function Home() {
                 />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
-              <div className="absolute bottom-6 left-6 right-6 glass p-4 rounded-xl border border-white/10">
-                <div className="flex items-center justify-between">
+              
+              {/* Enhanced Real-time Monitoring Card */}
+              <div className="absolute bottom-6 left-6 right-6 glass p-6 rounded-2xl border border-white/10 shadow-2xl">
+                <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/5">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                      <BarChart3 className="w-5 h-5 text-primary" />
+                      <Sun className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <div className="text-sm font-bold">Real-time Quality</div>
-                      <div className="text-xs text-muted-foreground">Downtown District</div>
+                      <div className="text-sm font-bold">Downtown District</div>
+                      <div className="text-xs text-muted-foreground">Partly Cloudy</div>
                     </div>
                   </div>
-                  <div className="text-primary font-bold">AQI: 24</div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-1 text-lg font-bold text-primary">
+                      <Thermometer className="w-4 h-4" /> 24°C
+                    </div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Temperature</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                      <BarChart3 className="w-4 h-4 text-blue-400" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold">24 (Good)</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">AQI Level</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                      <Droplets className="w-4 h-4 text-teal-400" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold">62%</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">Humidity</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                      <CloudRain className="w-4 h-4 text-indigo-400" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold">12%</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">Rain Chance</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                      <Wind className="w-4 h-4 text-emerald-400" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold">0.5mm</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">Precipitation</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
