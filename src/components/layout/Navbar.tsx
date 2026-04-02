@@ -81,11 +81,9 @@ export function Navbar() {
             >
               {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </Button>
-            <Link href="/login">
-              <Button variant="default" className="rounded-full neon-glow hover:scale-105 transition-transform">
-                Sign In
-              </Button>
-            </Link>
+            <Button asChild variant="default" className="rounded-full neon-glow hover:scale-105 transition-transform">
+              <Link href="/login">Sign In</Link>
+            </Button>
           </div>
 
           {/* Mobile toggle */}
@@ -119,11 +117,11 @@ export function Navbar() {
               </Link>
             ))}
             <hr className="border-white/5" />
-            <Link href="/login" onClick={() => setIsOpen(false)}>
-              <Button className="w-full rounded-xl gap-2">
+            <Button asChild className="w-full rounded-xl gap-2">
+              <Link href="/login" onClick={() => setIsOpen(false)}>
                 <LogIn className="w-4 h-4" /> Sign In
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       )}

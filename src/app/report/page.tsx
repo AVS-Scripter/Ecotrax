@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import { 
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
 } from '@/components/ui/select';
@@ -29,6 +30,8 @@ export default function ReportPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'in-progress' | 'completed' | 'incomplete' | 'reported'>('all');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -39,20 +42,46 @@ export default function ReportPage() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsSubmitting(true);
-    // Mock API call
-    setTimeout(() => {
-      console.log(values);
-      toast({
-        title: "Incident Reported",
-        description: "Your report has been submitted for review. Thank you for your contribution!",
-      });
-      setIsSubmitting(false);
-      form.reset();
-      setPreview(null);
-    }, 2000);
-  }
+  const [reports, setReports] = useState<Array<{
+    id: number;
+    name: string;
+    issueType: string;
+    description: string;
+    location: string;
+    image: string | null;
+    status: 'in-progress' | 'completed' | 'incomplete';
+  }>>([
+    {
+      id: 1,
+      name: 'Jane Alvarez',
+      issueType: 'air',
+      description: 'Smoke from nearby construction site causing irritation.',
+      location: 'Downtown Avenue 12',
+      image: null,
+      status: 'in-progress',
+    },
+    {
+      id: 2,
+      name: 'Ravi Kumar',
+      issueType: 'garbage',
+      description: 'Overflowing bins with food waste attracting pests.',
+      location: 'Maple Park',
+      image: null,
+      status: 'incomplete',
+    },
+  ]);
+
+  const [nextReportId, setNextReportId] = useState(3);
+
+  const filteredReports = reports.filter((report) => {
+    if (selectedFilter === 'all') return true;
+    if (selectedFilter === 'reported') return report.status !== 'completed';
+    return report.status === selectedFilter;
+  });
+
+  const handleStatusChange = (id: number, status: 'in-progress' | 'completed' | 'incomplete') => {
+    setReports((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -65,135 +94,205 @@ export default function ReportPage() {
     }
   };
 
-  return (
-    <div className="pt-32 pb-24 px-6 max-w-4xl mx-auto">
-      <div className="text-center mb-12 space-y-4">
-        <h1 className="text-4xl md:text-5xl font-headline font-bold">Report an Issue</h1>
-        <p className="text-muted-foreground">Help us identify environmental problems in your local community.</p>
-      </div>
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsSubmitting(true);
+    setTimeout(() => {
+      const newReport = {
+        id: nextReportId,
+        name: values.name,
+        issueType: values.issueType,
+        description: values.description,
+        location: values.location,
+        image: preview,
+        status: 'in-progress' as const,
+      };
+      setReports((prev) => [newReport, ...prev]);
+      setNextReportId((id) => id + 1);
+      toast({
+        title: 'Incident Reported',
+        description: 'Your report has been submitted for review. Thank you for your contribution!',
+      });
+      setIsSubmitting(false);
+      form.reset();
+      setPreview(null);
+      setIsModalOpen(false);
+    }, 1200);
+  }
 
-      <div className="glass p-8 md:p-12 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-5">
-          <Leaf className="w-64 h-64 text-primary" />
+  const statusClass = (status: string) => {
+    if (status === 'completed') return 'bg-emerald-500/30 text-emerald-200';
+    if (status === 'in-progress') return 'bg-blue-500/30 text-blue-100';
+    return 'bg-orange-500/30 text-orange-100';
+  };
+
+  return (
+    <div className="pt-24 pb-24 px-4 md:px-6 max-w-7xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-bold font-headline">Reports Dashboard</h1>
+          <p className="text-muted-foreground">Review and manage submitted reports.</p>
         </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 relative z-10">
-            <div className="grid md:grid-cols-2 gap-8">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="John Doe" className="bg-white/5 border-white/10 rounded-xl py-6" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="issueType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Issue Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="bg-white/5 border-white/10 rounded-xl py-6">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="glass">
-                        <SelectItem value="air"><div className="flex items-center gap-2"><Wind className="w-4 h-4 text-blue-400" /> Air Pollution</div></SelectItem>
-                        <SelectItem value="water"><div className="flex items-center gap-2"><Droplets className="w-4 h-4 text-teal-400" /> Water Quality</div></SelectItem>
-                        <SelectItem value="garbage"><div className="flex items-center gap-2"><Trash2 className="w-4 h-4 text-orange-400" /> Garbage / Waste</div></SelectItem>
-                        <SelectItem value="noise"><div className="flex items-center gap-2"><Volume2 className="w-4 h-4 text-purple-400" /> Noise Pollution</div></SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Input placeholder="Enter address or landmark" className="bg-white/5 border-white/10 rounded-xl py-6 pl-12" {...field} />
-                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                      <Button type="button" variant="ghost" className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-primary">Get GPS</Button>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Describe the issue in detail..." 
-                      className="bg-white/5 border-white/10 rounded-xl min-h-[120px]" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="space-y-4">
-              <FormLabel>Upload Evidence</FormLabel>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className="border-2 border-dashed border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/5 transition-all">
-                  <Upload className="w-8 h-8 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Click to upload photo</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-                </label>
-                {preview && (
-                  <div className="relative rounded-2xl overflow-hidden aspect-video border border-white/10">
-                    <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-                    <Button 
-                      type="button"
-                      variant="destructive" 
-                      size="icon" 
-                      className="absolute top-2 right-2 rounded-full w-6 h-6" 
-                      onClick={() => setPreview(null)}
-                    >
-                      &times;
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <Button 
-              type="submit" 
-              className="w-full rounded-xl py-6 text-lg neon-glow transition-all"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Submitting Report...
-                </>
-              ) : "Submit Report"}
-            </Button>
-          </form>
-        </Form>
+        <div className="flex items-center gap-3">
+          <Select value={selectedFilter} onValueChange={(value) => setSelectedFilter(value as any)}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="#all" />
+            </SelectTrigger>
+            <SelectContent className="glass">
+              <SelectItem value="all">#all</SelectItem>
+              <SelectItem value="in-progress">#in-progress</SelectItem>
+              <SelectItem value="completed">#completed</SelectItem>
+              <SelectItem value="incomplete">#incomplete</SelectItem>
+              <SelectItem value="reported">#reported</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={() => setIsModalOpen(true)} variant="default" className="rounded-full px-4 py-2 neon-glow">
+            + New Report
+          </Button>
+        </div>
       </div>
+
+      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+        {filteredReports.length === 0 ? (
+          <div className="glass p-6 rounded-3xl border border-white/10 text-center">No reports found for this filter.</div>
+        ) : (
+          filteredReports.map((report) => (
+            <article key={report.id} className="glass p-6 rounded-3xl border border-white/10 shadow-xl">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold">{report.name}</h3>
+                <span className={cn('px-3 py-1 rounded-full text-xs font-bold', statusClass(report.status))}>#{report.status}</span>
+              </div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">#{report.issueType}</div>
+              <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{report.description}</p>
+              <p className="text-sm">
+                <span className="font-medium">Location:</span> {report.location || 'Unknown'}
+              </p>
+              {report.image && (
+                <div className="mt-3 rounded-xl overflow-hidden border border-white/10">
+                  <img src={report.image} alt={`Report ${report.id}`} className="w-full h-40 object-cover" />
+                </div>
+              )}
+              <div className="mt-3 flex items-center gap-2">
+                <Select value={report.status} onValueChange={(value) => handleStatusChange(report.id, value as any)}>
+                  <SelectTrigger className="w-full h-10">
+                    <SelectValue placeholder="Update status" />
+                  </SelectTrigger>
+                  <SelectContent className="glass">
+                    <SelectItem value="in-progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="incomplete">Incomplete</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setIsModalOpen(false)}>
+          <div className="bg-card w-full max-w-3xl rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 animate-in zoom-in-90" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold">Report an Issue</h2>
+              <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)}>
+                ✕
+              </Button>
+            </div>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="John Doe" className="bg-white/5 border-white/10 rounded-xl py-3" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="issueType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Issue Type</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="bg-white/5 border-white/10 rounded-xl py-3">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="glass">
+                            <SelectItem value="air">Air Pollution</SelectItem>
+                            <SelectItem value="water">Water Quality</SelectItem>
+                            <SelectItem value="garbage">Garbage / Waste</SelectItem>
+                            <SelectItem value="noise">Noise Pollution</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter address or landmark" className="bg-white/5 border-white/10 rounded-xl py-3" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Describe the issue in detail..." className="bg-white/5 border-white/10 rounded-xl min-h-[120px]" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="space-y-2">
+                  <FormLabel>Upload Evidence</FormLabel>
+                  <label className="border-2 border-dashed border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-white/5 transition-all">
+                    <Upload className="w-6 h-6 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Click to upload photo</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                  </label>
+                  {preview && (
+                    <div className="relative rounded-xl overflow-hidden aspect-video border border-white/10">
+                      <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                      <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 rounded-full" onClick={() => setPreview(null)}>
+                        ×
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <Button type="submit" className="w-full rounded-xl py-3 neon-glow" disabled={isSubmitting}>
+                  {isSubmitting ? 'Submitting...' : 'Submit Report'}
+                </Button>
+              </form>
+            </Form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
