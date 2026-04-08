@@ -49,7 +49,7 @@ export function Navbar() {
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="bg-primary/20 p-2 rounded-lg group-hover:bg-primary/40 transition-colors">
-              <Leaf className="w-6 h-6 text-primary neon-text" />
+              <Leaf className="w-6 h-6 text-primary neon-text" suppressHydrationWarning />
             </div>
             <span className="text-xl font-bold font-headline tracking-tighter neon-text">
               ECOTRAX
@@ -79,7 +79,7 @@ export function Navbar() {
               onClick={toggleTheme}
               className="rounded-full hover:bg-white/5"
             >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {isDark ? <Sun className="w-5 h-5" suppressHydrationWarning /> : <Moon className="w-5 h-5" suppressHydrationWarning />}
             </Button>
             <Button asChild variant="default" className="rounded-full neon-glow hover:scale-105 transition-transform">
               <Link href="/login">Sign In</Link>
@@ -89,10 +89,10 @@ export function Navbar() {
           {/* Mobile toggle */}
           <div className="md:hidden flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={toggleTheme}>
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {isDark ? <Sun className="w-5 h-5" suppressHydrationWarning /> : <Moon className="w-5 h-5" suppressHydrationWarning />}
             </Button>
             <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)}>
-              {isOpen ? <X /> : <Menu />}
+              {isOpen ? <X suppressHydrationWarning /> : <Menu suppressHydrationWarning />}
             </Button>
           </div>
         </div>
@@ -112,14 +112,14 @@ export function Navbar() {
                   pathname === item.path ? "bg-primary/20 text-primary" : "hover:bg-white/5"
                 )}
               >
-                <item.icon className="w-5 h-5" />
+                <item.icon className="w-5 h-5" suppressHydrationWarning />
                 <span className="font-medium">{item.name}</span>
               </Link>
             ))}
             <hr className="border-white/5" />
             <Button asChild className="w-full rounded-xl gap-2">
               <Link href="/login" onClick={() => setIsOpen(false)}>
-                <LogIn className="w-4 h-4" /> Sign In
+                <LogIn className="w-4 h-4" suppressHydrationWarning /> Sign In
               </Link>
             </Button>
           </div>

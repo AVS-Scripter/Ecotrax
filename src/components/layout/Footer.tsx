@@ -8,21 +8,21 @@ export function Footer() {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col items-center justify-center text-center space-y-4">
           <Link href="/" className="flex items-center gap-3">
-            <Leaf className="w-8 h-8 text-primary" />
+            <Leaf className="w-8 h-8 text-primary" suppressHydrationWarning />
             <span className="text-2xl font-bold font-headline tracking-tighter">ECOTRAX</span>
           </Link>
           <p className="text-muted-foreground text-sm max-w-md">
             Empowering communities to monitor and improve environmental health through real-time data and transparency.
           </p>
           <div className="flex gap-6">
-            <Github className="w-5 h-5 text-muted-foreground hover:text-primary cursor-pointer transition-colors" />
-            <Twitter className="w-5 h-5 text-muted-foreground hover:text-primary cursor-pointer transition-colors" />
-            <Linkedin className="w-5 h-5 text-muted-foreground hover:text-primary cursor-pointer transition-colors" />
+            <Github className="w-5 h-5 text-muted-foreground hover:text-primary cursor-pointer transition-colors" suppressHydrationWarning />
+            <Twitter className="w-5 h-5 text-muted-foreground hover:text-primary cursor-pointer transition-colors" suppressHydrationWarning />
+            <Linkedin className="w-5 h-5 text-muted-foreground hover:text-primary cursor-pointer transition-colors" suppressHydrationWarning />
           </div>
         </div>
         
         <div className="mt-16 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Ecotrax. All rights reserved.</p>
+          <p suppressHydrationWarning>&copy; {new Date().getFullYear()} Ecotrax. All rights reserved.</p>
           <div className="flex gap-6">
             <span>Privacy Policy</span>
             <span>Terms of Service</span>

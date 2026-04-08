@@ -45,7 +45,7 @@ export default function Home() {
             <div className="flex flex-wrap gap-4">
               <Link href="/report">
                 <Button size="lg" className="rounded-full px-8 gap-2 group">
-                  Report Issue <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  Report Issue <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" suppressHydrationWarning />
                 </Button>
               </Link>
               <Link href="/dashboard">
@@ -91,7 +91,7 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/5">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                      <Sun className="w-5 h-5 text-primary" />
+                      <Sun className="w-5 h-5 text-primary" suppressHydrationWarning />
                     </div>
                     <div>
                       <div className="text-sm font-bold">Downtown District</div>
@@ -100,7 +100,7 @@ export default function Home() {
                   </div>
                   <div className="text-right">
                     <div className="flex items-center gap-1 text-lg font-bold text-primary">
-                      <Thermometer className="w-4 h-4" /> 24°C
+                      <Thermometer className="w-4 h-4" suppressHydrationWarning /> 24°C
                     </div>
                     <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Temperature</div>
                   </div>
@@ -109,7 +109,7 @@ export default function Home() {
                 <div className="grid grid-cols-2 gap-y-4 gap-x-8">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                      <BarChart3 className="w-4 h-4 text-blue-400" />
+                      <BarChart3 className="w-4 h-4 text-blue-400" suppressHydrationWarning />
                     </div>
                     <div>
                       <div className="text-xs font-bold">24 (Good)</div>
@@ -119,7 +119,7 @@ export default function Home() {
 
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                      <Droplets className="w-4 h-4 text-teal-400" />
+                      <Droplets className="w-4 h-4 text-teal-400" suppressHydrationWarning />
                     </div>
                     <div>
                       <div className="text-xs font-bold">62%</div>
@@ -129,7 +129,7 @@ export default function Home() {
 
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                      <CloudRain className="w-4 h-4 text-indigo-400" />
+                      <CloudRain className="w-4 h-4 text-indigo-400" suppressHydrationWarning />
                     </div>
                     <div>
                       <div className="text-xs font-bold">12%</div>
@@ -139,7 +139,7 @@ export default function Home() {
 
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                      <Wind className="w-4 h-4 text-emerald-400" />
+                      <Wind className="w-4 h-4 text-emerald-400" suppressHydrationWarning />
                     </div>
                     <div>
                       <div className="text-xs font-bold">0.5mm</div>
@@ -183,7 +183,7 @@ export default function Home() {
           ].map((feature, i) => (
             <div key={i} className="glass p-8 rounded-3xl border border-white/5 hover:border-primary/20 transition-all group">
               <div className={`w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                <feature.icon className={`w-6 h-6 ${feature.color}`} />
+                <feature.icon className={`w-6 h-6 ${feature.color}`} suppressHydrationWarning />
               </div>
               <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">{feature.desc}</p>
