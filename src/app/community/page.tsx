@@ -1,7 +1,9 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 import { Trophy, Users, Star, Target, ArrowUp, Zap, Calendar, Heart, X } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -34,6 +36,91 @@ const leaderboard = [
 
 export default function CommunityPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [joinedChallengeIds, setJoinedChallengeIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (!auth) return;
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleJoin = (id: number) => {
+    if (!user) {
+      alert("Please log in to join challenges!");
+      return;
+    }
+    if (!joinedChallengeIds.includes(id)) {
+      setJoinedChallengeIds(prev => [...prev, id]);
+    }
+  };
+
+  const handleLeave = (id: number) => {
+    setJoinedChallengeIds(prev => prev.filter(c => c !== id));
+  };
+
+  const renderChallengeContent = (challenge: any, isJoined: boolean) => (
+    <>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
+        <div>
+          <div className="text-xs text-primary font-bold uppercase tracking-wider">{challenge.category}</div>
+          <h3 className="text-xl font-bold mt-1">{challenge.title}</h3>
+        </div>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {challenge.participants}</span>
+          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {challenge.deadline}</span>
+        </div>
+      </div>
+      
+      {!isJoined ? (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs font-medium">
+              <span>Progress</span>
+              <span className="text-primary">{challenge.progress}%</span>
+            </div>
+            <Progress value={challenge.progress} className="h-2 bg-white/5" />
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={() => handleJoin(challenge.id)} variant="outline" className="rounded-xl px-6 h-9 glass hover:bg-white/5 border-white/10">Join Challenge</Button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white/5 p-5 rounded-2xl border border-white/5 space-y-4 mt-4">
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-bold">Your Mini Dashboard</span>
+            <span className="text-primary text-xs font-bold bg-primary/10 px-2 py-1 rounded-full">+500 EXP on Completion</span>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs font-medium">
+              <span>Personal Progress (2/5 actions)</span>
+              <span className="text-primary">40%</span>
+            </div>
+            <Progress value={40} className="h-2 bg-primary/20" />
+          </div>
+          
+          <div className="pt-3 border-t border-white/5 flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="flex -space-x-2">
+                <Avatar className="w-6 h-6 border-2 border-background"><AvatarImage src="https://picsum.photos/seed/a/100/100" /></Avatar>
+                <Avatar className="w-6 h-6 border-2 border-background"><AvatarImage src="https://picsum.photos/seed/b/100/100" /></Avatar>
+                <Avatar className="w-6 h-6 border-2 border-background"><AvatarImage src="https://picsum.photos/seed/c/100/100" /></Avatar>
+              </div>
+              <span className="text-xs text-muted-foreground pl-1">Top Contributors</span>
+            </div>
+            <Button onClick={() => handleLeave(challenge.id)} variant="ghost" size="sm" className="h-7 text-xs text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg">Leave Challenge</Button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  const activeChallengesList = challenges.filter(c => !joinedChallengeIds.includes(c.id));
+  const joinedChallengesList = challenges.filter(c => joinedChallengeIds.includes(c.id));
+
   return (
     <div className="pt-24 pb-12 px-6 max-w-7xl mx-auto space-y-12">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -47,57 +134,65 @@ export default function CommunityPage() {
         <div className="glass p-6 rounded-2xl border border-white/5 min-w-[240px] flex items-center justify-between">
           <div>
             <div className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Your Rank</div>
-            <div className="text-2xl font-bold font-headline">--</div> {/*place holder for user rank, show this when logged out */}
+            <div className="text-2xl font-bold font-headline">{user ? '#42' : '--'}</div> {/*place holder for user rank */}
           </div>
           <div className="h-10 w-[1px] bg-white/10" />
           <div className="text-right">
             <div className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Total Points</div>
-            <div className="text-2xl font-bold font-headline text-primary">--</div> {/*place holder for user exp, show this when logged out */}
+            <div className="text-2xl font-bold font-headline text-primary">{user ? '1,250' : '--'}</div> {/*place holder for user exp */}
           </div>
         </div>
       </header>
 
       <div className="grid lg:grid-cols-3 gap-12">
-        {/* Active Challenges */}
         <div className="lg:col-span-2 space-y-6">
+          {user && joinedChallengesList.length > 0 && (
+            <div className="mb-10 space-y-4">
+              <h2 className="text-2xl font-bold font-headline">Joined Challenges</h2>
+              <div className="space-y-4">
+                {joinedChallengesList.map((challenge) => (
+                  <div key={challenge.id} className="glass p-6 rounded-3xl border border-primary/30 shadow-[0_0_15px_rgba(0,255,159,0.1)] transition-all group overflow-hidden relative">
+                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
+                    <div className="flex flex-col md:flex-row gap-6 items-start relative z-10">
+                      <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
+                        <challenge.icon className="w-8 h-8 text-primary" />
+                      </div>
+                      <div className="flex-1 w-full">
+                        {renderChallengeContent(challenge, true)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Active Challenges */}
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold font-headline">Active Challenges</h2>
             <Button onClick={() => setIsModalOpen(true)} variant="link" className="text-primary p-0">Browse All</Button>
           </div>
           
           <div className="space-y-4">
-            {challenges.map((challenge) => (
-              <div key={challenge.id} className="glass p-6 rounded-3xl border border-white/5 hover:border-primary/20 transition-all group overflow-hidden relative">
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl" />
-                <div className="flex flex-col md:flex-row gap-6 items-start relative z-10">
-                  <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center shrink-0">
-                    <challenge.icon className="w-8 h-8 text-primary" />
-                  </div>
-                  <div className="flex-1 space-y-4 w-full">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                      <div>
-                        <div className="text-xs text-primary font-bold uppercase tracking-wider">{challenge.category}</div>
-                        <h3 className="text-xl font-bold mt-1">{challenge.title}</h3>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {challenge.participants}</span>
-                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {challenge.deadline}</span>
-                      </div>
+            {activeChallengesList.length === 0 ? (
+              <div className="glass p-6 rounded-3xl border border-white/5 text-center text-muted-foreground">
+                You've joined all active challenges! Check out 'Browse All' for more.
+              </div>
+            ) : (
+              activeChallengesList.map((challenge) => (
+                <div key={challenge.id} className="glass p-6 rounded-3xl border border-white/5 hover:border-primary/20 transition-all group overflow-hidden relative">
+                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl" />
+                  <div className="flex flex-col md:flex-row gap-6 items-start relative z-10">
+                    <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center shrink-0">
+                      <challenge.icon className="w-8 h-8 text-primary" />
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs font-medium">
-                        <span>Progress</span>
-                        <span className="text-primary">{challenge.progress}%</span>
-                      </div>
-                      <Progress value={challenge.progress} className="h-2 bg-white/5" />
-                    </div>
-                    <div className="flex justify-end">
-                      <Button variant="outline" className="rounded-xl px-6 h-9 glass hover:bg-white/5 border-white/10">Join Challenge</Button>
+                    <div className="flex-1 w-full">
+                      {renderChallengeContent(challenge, false)}
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -192,9 +287,15 @@ export default function CommunityPage() {
                           <Progress value={challenge.progress} className="h-2 bg-white/5" />
                         </div>
                         <div className="flex justify-end pt-2">
-                          <Button variant="outline" className="rounded-xl px-6 h-9 glass hover:bg-white/5 border-white/10">
-                            Join Challenge
-                          </Button>
+                          {joinedChallengeIds.includes(challenge.id) ? (
+                            <Button variant="secondary" disabled className="rounded-xl px-6 h-9">
+                              Joined
+                            </Button>
+                          ) : (
+                            <Button onClick={() => { setIsModalOpen(false); handleJoin(challenge.id); }} variant="outline" className="rounded-xl px-6 h-9 glass hover:bg-white/5 border-white/10 text-primary">
+                              Join Challenge
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -1,0 +1,77 @@
+# Ecotrax Backend Database Integration Plan
+
+This document outlines the step-by-step process to integrate Firebase Firestore as the backend database for Ecotrax. Since Firebase is already configured in the application, Firestore is the ideal NoSQL database to store dynamic data and handle real-time updates for reports, statistics, and users.
+
+## Phase 1: Database Schema Design
+We will use Cloud Firestore to govern our data. Here are the core collections and sample structures you should create:
+
+1. `users` (Collection)
+   Stores user profiles, progress, and settings.
+   - Document ID: `uid` (from Firebase Auth)
+   - Fields: `name`, `email`, `role`, `points` (number), `joinedChallenges` (array of challenge IDs), `createdAt` (timestamp).
+   - *Optional Subcollection*: `user_challenges` for tracking a user's granular progress in specific joined challenges, covering `personalProgress` and `joinedAt`.
+
+2. `reports` (Collection)
+   Stores all environmental issues submitted by users.
+   - Document ID: Auto-generated
+   - Fields: `userId` (reference to `users`), `issueType` (air, water, garbage, noise), `description`, `locationName`, `coordinates` (GeoPoint), `imageUrl` (string), `status` (in-progress, resolved, un-resolved), `createdAt` (timestamp).
+
+3. `global_stats` (Collection)
+   A single document to hold platform-wide usage metrics.
+   - Document ID: `singleton_stats`
+   - Fields: `totalReports`, `monitoredZones`, `totalUsers`.
+   - *Note: You can update these stats via Cloud Functions or transaction batches when new users/reports are created.*
+
+4. `challenges` (Collection)
+   Active community challenges and their metadata.
+   - Document ID: Auto-generated
+   - Fields: `title`, `category`, `description`, `participantsCount`, `deadline`, `progress` (number).
+
+## Phase 2: Firebase Configuration Update
+1. Update `src/lib/firebase.ts` to include the Firestore instance.
+   - Import `getFirestore` from `firebase/firestore`.
+   - Initialize and export it alongside `auth`: `export const db = getFirestore(app);`
+2. Ensure Firebase Storage is initialized if you intend to store uploaded proof images from the Report page, exporting `export const storage = getStorage(app);`
+
+## Phase 3: Create a Data Access Layer
+Instead of calling Firestore directly in your UI components, create a dedicated folder `src/lib/db/` or `src/services/` to abstract the logic.
+- Create files like `reports.ts`, `users.ts`, `stats.ts`.
+- Implement basic CRUD operations (e.g., `createReport(data)`, `fetchReports(filters)`, `getPlatformStats()`).
+
+## Phase 4: Component Integration Guide
+
+### Step 4.1: Home/Landing Page (`src/app/page.tsx`)
+- Import your data fetching logic.
+- Change the hardcoded React component stats (12.5k Reports, 840 Monitored, 45.2k Users) to use data from the `global_stats` document.
+- Consider utilizing React `useEffect` or Server Components (if Next.js SSR is leveraged) to grab the data seamlessly upon page load.
+
+### Step 4.2: Dashboard (`src/app/dashboard/page.tsx`)
+- Query the `reports` collection to generate the chart data (group by month, type).
+- Fetch the most recent 4-5 reports ordered by `createdAt` in descending order to populate the 'Recent Reports' widget.
+- Calculate dynamic metrics (Total Reports, Active Issues) based on the retrieved report array.
+
+### Step 4.3: Submit & Track Reports (`src/app/report/page.tsx`)
+- Refactor the front-end 'Submit' form to invoke your `createReport` function.
+- Before saving the text data, securely upload the user's evidence image to Firebase Storage and retrieve the download URL to save in the Firestore `report` document.
+- Use Firestore's `onSnapshot` listener to subscribe to the real-time list of reports, completely eliminating the hardcoded mock `reports` array.
+
+### Step 4.4: Map View (`src/app/map/page.tsx`)
+- Fetch coordinates and data from your `reports` collection.
+- Map the real `reports` data instead of `mockMarkers`.
+- Allow the map marker clicks to pull actual images and long-form descriptions from the database.
+
+### Step 4.5: Community & Leaderboard (`src/app/community/page.tsx`)
+- Query the `challenges` collection to display active community missions.
+- Query the `users` collection, applying an `orderBy('points', 'desc')` and `.limit(5)` to render the global leaderboard instead of the hardcoded characters.
+
+## Phase 5: Auth Integration
+- Attach a listener to Google Sign In (or regular email signups).
+- On initial creation, check if the Firebase UID exists in the `users` collection.
+- If not, automatically provision a new user document representing their profile with baseline points starting at 0.
+
+## Phase 6: Security and Rules
+Update the existing `firestore.rules` file in the root. By default, it may have temporary open access.
+- Restrict write access to `reports` so only logged-in users can post.
+- Ensure only admins can update a report's `status` to "completed".
+- Prevent users from tampering with `global_stats`.
+- Ensure users can only update their own profile details within the `users` collection.
