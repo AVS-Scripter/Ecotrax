@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Leaf, Menu, X, Moon, Sun, LayoutDashboard, Map as MapIcon, Users, FileText, LogIn, LogOut, User } from 'lucide-react';
+import { Leaf, Menu, X, LayoutDashboard, Map as MapIcon, Users, FileText, LogIn, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { auth } from '@/lib/firebase';
@@ -21,15 +21,12 @@ const navItems = [
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isDark, setIsDark] = useState(true);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
-    
-    setIsDark(document.documentElement.classList.contains('dark'));
     
     const unsubscribe = auth ? onAuthStateChanged(auth, (user) => {
       setUser(user);
@@ -40,19 +37,6 @@ export function Navbar() {
       unsubscribe();
     };
   }, []);
-
-  const toggleTheme = () => {
-    const isDarkModeNow = document.documentElement.classList.contains('dark');
-    if (isDarkModeNow) {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-      setIsDark(false);
-    } else {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-      setIsDark(true);
-    }
-  };
 
   const handleSignOut = async () => {
     if (!auth) return;
@@ -103,15 +87,6 @@ export function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={toggleTheme}
-              className="rounded-full hover:bg-white/5"
-            >
-              {isDark ? <Sun className="w-5 h-5" suppressHydrationWarning /> : <Moon className="w-5 h-5" suppressHydrationWarning />}
-            </Button>
-            
             {user ? (
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
@@ -137,9 +112,6 @@ export function Navbar() {
 
           {/* Mobile toggle */}
           <div className="md:hidden flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={toggleTheme}>
-              {isDark ? <Sun className="w-5 h-5" suppressHydrationWarning /> : <Moon className="w-5 h-5" suppressHydrationWarning />}
-            </Button>
             <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)}>
               {isOpen ? <X suppressHydrationWarning /> : <Menu suppressHydrationWarning />}
             </Button>
