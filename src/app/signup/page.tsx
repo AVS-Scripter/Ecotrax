@@ -1,17 +1,43 @@
 
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Leaf, Mail, Lock, User, Chrome } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { signInWithPopup } from 'firebase/auth';
+import { signInWithPopup, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
+import { createOrUpdateUserProfile } from '@/lib/db/users';
 
 export default function SignupPage() {
   const router = useRouter();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleEmailSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth) {
+      alert("Firebase is not configured. Please add your keys to .env.local");
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await createOrUpdateUserProfile(userCredential.user, name);
+      router.push('/dashboard');
+    } catch (err: any) {
+      console.error("Error signing up:", err);
+      setError(err.message || 'An error occurred during sign up.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     if (!auth || !googleProvider) {
@@ -19,7 +45,8 @@ export default function SignupPage() {
       return;
     }
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      await createOrUpdateUserProfile(result.user);
       router.push('/dashboard');
     } catch (error) {
       console.error("Error signing in with Google:", error);
@@ -41,11 +68,13 @@ export default function SignupPage() {
             <p className="text-muted-foreground text-sm">Join the global environmental movement today.</p>
           </div>
 
-          <div className="space-y-4">
+          <form className="space-y-4" onSubmit={handleEmailSignUp}>
+            {error && <div className="text-red-500 text-sm font-bold text-center bg-red-500/10 py-2 rounded-xl">{error}</div>}
+
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-widest ml-1">Full Name</label>
               <div className="relative">
-                <Input placeholder="John Doe" className="bg-white/5 border-white/10 rounded-2xl h-12 pl-12" />
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="John Doe" className="bg-white/5 border-white/10 rounded-2xl h-12 pl-12" required />
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               </div>
             </div>
@@ -53,7 +82,7 @@ export default function SignupPage() {
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-widest ml-1">Email</label>
               <div className="relative">
-                <Input type="email" placeholder="name@example.com" className="bg-white/5 border-white/10 rounded-2xl h-12 pl-12" />
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="bg-white/5 border-white/10 rounded-2xl h-12 pl-12" required />
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               </div>
             </div>
@@ -61,15 +90,15 @@ export default function SignupPage() {
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-widest ml-1">Password</label>
               <div className="relative">
-                <Input type="password" placeholder="••••••••" className="bg-white/5 border-white/10 rounded-2xl h-12 pl-12" />
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="bg-white/5 border-white/10 rounded-2xl h-12 pl-12" required minLength={6} />
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               </div>
             </div>
 
-            <Button className="w-full h-12 rounded-2xl font-bold neon-glow transition-all hover:scale-[1.02] mt-4">
-              Create Account
+            <Button type="submit" disabled={loading} className="w-full h-12 rounded-2xl font-bold neon-glow transition-all hover:scale-[1.02] mt-4">
+              {loading ? 'Creating Account...' : 'Create Account'}
             </Button>
-          </div>
+          </form>
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">

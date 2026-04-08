@@ -1,6 +1,7 @@
 
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -16,16 +17,18 @@ const isConfigValid = !!firebaseConfig.apiKey;
 
 let auth: any;
 let googleProvider: any;
+let db: any;
 
 if (isConfigValid) {
   const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
   auth = getAuth(app);
   googleProvider = new GoogleAuthProvider();
+  db = getFirestore(app);
 } else {
   console.warn("Firebase API Key is missing. Please check your .env.local file.");
-  // Export placeholders or handle accordingly
   auth = null;
   googleProvider = null;
+  db = null;
 }
 
-export { auth, googleProvider };
+export { auth, googleProvider, db };

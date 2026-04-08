@@ -29,6 +29,8 @@ export function Navbar() {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     
+    setIsDark(document.documentElement.classList.contains('dark'));
+    
     const unsubscribe = auth ? onAuthStateChanged(auth, (user) => {
       setUser(user);
     }) : () => {};
@@ -40,8 +42,16 @@ export function Navbar() {
   }, []);
 
   const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle('dark');
+    const isDarkModeNow = document.documentElement.classList.contains('dark');
+    if (isDarkModeNow) {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      setIsDark(false);
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+      setIsDark(true);
+    }
   };
 
   const handleSignOut = async () => {

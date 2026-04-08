@@ -8,7 +8,7 @@ We will use Cloud Firestore to govern our data. Here are the core collections an
 1. `users` (Collection)
    Stores user profiles, progress, and settings.
    - Document ID: `uid` (from Firebase Auth)
-   - Fields: `name`, `email`, `role`, `points` (number), `joinedChallenges` (array of challenge IDs), `createdAt` (timestamp).
+   - Fields: `name`, `email`, `role`, `rank` (number), `points` (number), `joinedChallenges` (array of challenge IDs), `createdAt` (timestamp).
    - *Optional Subcollection*: `user_challenges` for tracking a user's granular progress in specific joined challenges, covering `personalProgress` and `joinedAt`.
 
 2. `reports` (Collection)

@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 const challenges = [
   { id: 1, title: 'Plant 50 Trees', category: 'Growth', progress: 75, participants: 124, deadline: '5 days left', icon: Zap, description: 'Help reforest local parks and urban areas by planting native tree species.' },
@@ -38,6 +39,7 @@ export default function CommunityPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [joinedChallengeIds, setJoinedChallengeIds] = useState<number[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!auth) return;
@@ -49,7 +51,11 @@ export default function CommunityPage() {
 
   const handleJoin = (id: number) => {
     if (!user) {
-      alert("Please log in to join challenges!");
+      toast({
+        title: "Authentication Required",
+        description: "You have to log in to join challenges.",
+        variant: "destructive",
+      });
       return;
     }
     if (!joinedChallengeIds.includes(id)) {
