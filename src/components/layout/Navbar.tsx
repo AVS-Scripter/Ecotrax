@@ -4,9 +4,11 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Leaf, Menu, X, Moon, Sun, Dashboard, LayoutDashboard, Map as MapIcon, Users, FileText, LogIn } from 'lucide-react';
+import { Leaf, Menu, X, Moon, Sun, LayoutDashboard, Map as MapIcon, Users, FileText, LogIn, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
 
 const navItems = [
   { name: 'Home', path: '/', icon: Leaf },
@@ -20,17 +22,35 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isDark, setIsDark] = useState(true);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    
+    const unsubscribe = auth ? onAuthStateChanged(auth, (user) => {
+      setUser(user);
+    }) : () => {};
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      unsubscribe();
+    };
   }, []);
 
   const toggleTheme = () => {
     setIsDark(!isDark);
     document.documentElement.classList.toggle('dark');
+  };
+
+  const handleSignOut = async () => {
+    if (!auth) return;
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
   return (
@@ -81,9 +101,28 @@ export function Navbar() {
             >
               {isDark ? <Sun className="w-5 h-5" suppressHydrationWarning /> : <Moon className="w-5 h-5" suppressHydrationWarning />}
             </Button>
-            <Button asChild variant="default" className="rounded-full neon-glow hover:scale-105 transition-transform">
-              <Link href="/login">Sign In</Link>
-            </Button>
+            
+            {user ? (
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+                   <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border border-primary/30">
+                     {user.photoURL ? (
+                       <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
+                     ) : (
+                       <User className="w-3 h-3 text-primary" />
+                     )}
+                   </div>
+                   <span className="text-xs font-medium max-w-[100px] truncate">{user.displayName || 'User'}</span>
+                </div>
+                <Button onClick={handleSignOut} variant="ghost" size="sm" className="rounded-full gap-2 hover:bg-destructive/10 hover:text-destructive">
+                  <LogOut className="w-4 h-4" /> Sign Out
+                </Button>
+              </div>
+            ) : (
+              <Button asChild variant="default" className="rounded-full neon-glow hover:scale-105 transition-transform">
+                <Link href="/login">Sign In</Link>
+              </Button>
+            )}
           </div>
 
           {/* Mobile toggle */}
@@ -117,11 +156,33 @@ export function Navbar() {
               </Link>
             ))}
             <hr className="border-white/5" />
-            <Button asChild className="w-full rounded-xl gap-2">
-              <Link href="/login" onClick={() => setIsOpen(false)}>
-                <LogIn className="w-4 h-4" suppressHydrationWarning /> Sign In
-              </Link>
-            </Button>
+            
+            {user ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 px-4 py-3">
+                   <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+                     {user.photoURL ? (
+                       <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
+                     ) : (
+                       <User className="text-primary" />
+                     )}
+                   </div>
+                   <div>
+                     <div className="font-bold">{user.displayName || 'User'}</div>
+                     <div className="text-xs text-muted-foreground">{user.email}</div>
+                   </div>
+                </div>
+                <Button onClick={handleSignOut} variant="ghost" className="w-full rounded-xl gap-2 hover:bg-destructive/10 hover:text-destructive">
+                  <LogOut className="w-4 h-4" /> Sign Out
+                </Button>
+              </div>
+            ) : (
+              <Button asChild className="w-full rounded-xl gap-2">
+                <Link href="/login" onClick={() => setIsOpen(false)}>
+                  <LogIn className="w-4 h-4" suppressHydrationWarning /> Sign In
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       )}

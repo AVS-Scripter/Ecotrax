@@ -3,11 +3,29 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Leaf, Github, Mail, Lock, User, Chrome } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Leaf, Mail, Lock, User, Chrome } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from '@/lib/firebase';
 
 export default function SignupPage() {
+  const router = useRouter();
+
+  const handleGoogleSignIn = async () => {
+    if (!auth || !googleProvider) {
+      alert("Google Sign-In is not configured. Please add your Firebase keys to .env.local");
+      return;
+    }
+    try {
+      await signInWithPopup(auth, googleProvider);
+      router.push('/dashboard');
+    } catch (error) {
+      console.error("Error signing in with Google:", error);
+    }
+  };
+
   return (
     <div className="min-h-screen pt-20 flex items-center justify-center px-6 relative overflow-hidden">
       {/* Background Decor */}
@@ -62,12 +80,13 @@ export default function SignupPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline" className="rounded-2xl h-12 glass border-white/5 gap-2 hover:bg-white/5">
-              <Chrome className="w-4 h-4" /> Google
-            </Button>
-            <Button variant="outline" className="rounded-2xl h-12 glass border-white/5 gap-2 hover:bg-white/5">
-              <Github className="w-4 h-4" /> GitHub
+          <div>
+            <Button 
+              variant="outline" 
+              onClick={handleGoogleSignIn}
+              className="w-full rounded-2xl h-12 glass border-white/5 gap-2 hover:bg-white/5 transition-all active:scale-[0.98]"
+            >
+              <Chrome className="w-4 h-4" /> Sign up with Google
             </Button>
           </div>
 
