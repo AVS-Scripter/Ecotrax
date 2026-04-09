@@ -21,6 +21,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { createReport, subscribeToReports, Report } from '@/lib/db/reports';
 import { auth } from '@/lib/firebase';
 
+import { OnboardingGuard } from '@/components/providers/OnboardingGuard';
+import { useAuth } from '@/components/providers/AuthProvider';
+
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   issueType: z.string({ required_error: "Please select an issue type" }),
@@ -29,6 +32,15 @@ const formSchema = z.object({
 });
 
 export default function ReportPage() {
+  return (
+    <OnboardingGuard>
+      <ReportPageContent />
+    </OnboardingGuard>
+  );
+}
+
+function ReportPageContent() {
+  const { user, profile, communityId } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -37,12 +49,13 @@ export default function ReportPage() {
   const [reports, setReports] = useState<Report[]>([]);
 
   useEffect(() => {
-    const unsubscribe = subscribeToReports((data) => {
+    if(!communityId) return;
+    const unsubscribe = subscribeToReports(communityId, (data) => {
       setReports(data);
     }, selectedFilter);
 
     return () => unsubscribe();
-  }, [selectedFilter]);
+  }, [selectedFilter, communityId]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -68,13 +81,14 @@ export default function ReportPage() {
     setIsSubmitting(true);
     try {
       await createReport({
+        communityId: communityId || "",
         userId: auth?.currentUser?.uid,
         name: values.name,
         issueType: values.issueType,
         description: values.description,
         location: values.location,
         image: preview,
-        status: 'un-resolved',
+        status: 'unresolved',
       });
 
       toast({
@@ -119,7 +133,7 @@ export default function ReportPage() {
               <SelectItem value="all">All Reports</SelectItem>
               <SelectItem value="in-progress">In Progress</SelectItem>
               <SelectItem value="resolved">Resolved</SelectItem>
-              <SelectItem value="un-resolved">Un-resolved</SelectItem>
+              <SelectItem value="unresolved">Unresolved</SelectItem>
             </SelectContent>
           </Select>
           <Button onClick={() => setIsModalOpen(true)} variant="default" className="rounded-full px-4 py-2 neon-glow">

@@ -30,7 +30,7 @@ export default function SignupPage() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await createOrUpdateUserProfile(userCredential.user, name);
-      router.push('/dashboard');
+      router.push('/onboarding');
     } catch (err: any) {
       console.error("Error signing up:", err);
       setError(err.message || 'An error occurred during sign up.');
@@ -38,6 +38,7 @@ export default function SignupPage() {
       setLoading(false);
     }
   };
+
 
   const handleGoogleSignIn = async () => {
     if (!auth || !googleProvider) {
@@ -47,7 +48,13 @@ export default function SignupPage() {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       await createOrUpdateUserProfile(result.user);
-      router.push('/dashboard');
+      const { getUserProfile } = await import('@/lib/db/users');
+      const profile = await getUserProfile(result.user.uid);
+      if (profile?.hasJoinedCommunity) {
+        router.push('/dashboard');
+      } else {
+        router.push('/onboarding');
+      }
     } catch (error: any) {
       console.error("Error signing in with Google:", error);
       alert(`Google Sign-In Error: ${error.message}\n\nPlease verify that Google Sign-in is explicitly ENABLED in your Firebase console under Authentication -> Sign-in methods, and that your authorized domains include your current local environment.`);

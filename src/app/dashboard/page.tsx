@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -16,10 +15,13 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { subscribeToGlobalStats, GlobalStats } from '@/lib/db/stats';
 import { subscribeToReports, Report } from '@/lib/db/reports';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 const COLORS = ['#00FF9F', '#0e915eff', '#67ffd4ff', '#77ac94d3'];
 
 export default function Dashboard() {
+  const { user, loading, communityId, isOnboarded } = useAuth();
+  
   const [stats, setStats] = useState<GlobalStats>({
     totalReports: 0,
     monitoredZones: 0,
@@ -36,14 +38,38 @@ export default function Dashboard() {
   const [reports, setReports] = useState<Report[]>([]);
 
   useEffect(() => {
+    if(!communityId) return;
+    
     const unsubStats = subscribeToGlobalStats(setStats);
-    const unsubReports = subscribeToReports((data) => setReports(data.slice(0, 4)));
+    const unsubReports = subscribeToReports(communityId, (data) => setReports(data.slice(0, 4)));
 
     return () => {
       unsubStats();
       unsubReports();
     };
-  }, []);
+  }, [communityId]);
+
+  if (loading) {
+    return <div className="pt-24 text-center">Loading...</div>;
+  }
+
+  if (!user || !isOnboarded || !communityId) {
+    return (
+      <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto space-y-8 text-center pt-32">
+        <h1 className="text-3xl font-headline font-bold">Community Dashboard</h1>
+        <p className="text-muted-foreground">Sign in and join a community to view your community's reports and activity.</p>
+        {!user ? (
+            <Link href="/login">
+                <Button className="mt-4 neon-glow rounded-xl">Sign in to continue</Button>
+            </Link>
+        ) : (
+            <Link href="/onboarding">
+                <Button className="mt-4 neon-glow rounded-xl">Join a Community</Button>
+            </Link>
+        )}
+      </div>
+    );
+  }
 
   const pieData = [
     { name: 'Air', value: reports.filter(r => r.issueType === 'air').length || 1 },
@@ -56,7 +82,7 @@ export default function Dashboard() {
     <div className="pt-24 pb-12 px-6 max-w-7xl mx-auto space-y-8">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-headline font-bold tracking-tight">Environmental Dashboard</h1>
+          <h1 className="text-3xl font-headline font-bold tracking-tight">Community Dashboard</h1>
           <p className="text-muted-foreground">Real-time metrics and historical trends across monitored zones.</p>
         </div>
         <div className="flex items-center gap-2 text-xs bg-primary/10 text-primary px-3 py-1 rounded-full font-bold uppercase tracking-wider border border-primary/20">

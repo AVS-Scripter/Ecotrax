@@ -3,10 +3,6 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { incrementTotalUsers } from './stats';
 
-/**
- * Ensures a user profile document exists in the Firestore database.
- * If it doesn't exist, it securely creates it with default initialization values.
- */
 export async function createOrUpdateUserProfile(user: User, customName?: string) {
   if (!db || !user) return; // safeguard for missing config or null user
 
@@ -16,23 +12,30 @@ export async function createOrUpdateUserProfile(user: User, customName?: string)
     const userSnap = await getDoc(userRef);
 
     if (!userSnap.exists()) {
-      // Prioritize custom typed name > google display name > email prefix string slicing
       const finalName = customName || user.displayName || user.email?.split('@')[0] || 'Unknown Citizen';
 
       await setDoc(userRef, {
         name: finalName,
         email: user.email,
-        role: 'user',
-        rank: 1,
+        rank: null,
         points: 0,
-        joinedChallenges: [],
+        hasJoinedCommunity: "",
         createdAt: serverTimestamp(),
       });
 
-      // Increment global user count
       await incrementTotalUsers();
     }
   } catch (error) {
     console.error('Error synchronizing user profile in Firestore', error);
   }
+}
+
+export async function getUserProfile(userId: string) {
+  if (!db) return null;
+  const userRef = doc(db, 'users', userId);
+  const snap = await getDoc(userRef);
+  if (snap.exists()) {
+    return snap.data();
+  }
+  return null;
 }

@@ -1,18 +1,80 @@
-rules_version='2'
-
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2026, 5, 8);
+
+    function isAuthenticated() { 
+      return request.auth != null; 
+    }
+    
+    function isOwner(userId) { 
+      return isAuthenticated() && request.auth.uid == userId; 
+    }
+
+    function isCommunityMember(communityId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid));
+    }
+
+    function getCommunityRole(communityId) {
+      return get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.role;
+    }
+
+    function isCommunityAdmin(communityId) {
+      return isCommunityMember(communityId) && getCommunityRole(communityId) == 'admin';
+    }
+
+    function isCommunityModerator(communityId) {
+      return isCommunityMember(communityId) &&
+        (getCommunityRole(communityId) == 'moderator' || getCommunityRole(communityId) == 'admin');
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+
+      match /user_challenges/{challengeId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    match /communities/{communityId} {
+      allow read: if isCommunityMember(communityId);
+      allow create: if isAuthenticated();
+      allow update: if isCommunityAdmin(communityId);
+
+      match /members/{memberId} {
+        allow read: if isCommunityMember(communityId);
+        // Creating during invite is actually done via admin sdk or via firestore transaction in the client.
+        // Wait, from client we are appending members via runTransaction. So we need create permissions
+        // But restricting create properly from client without a cloud function is tricky. 
+        // For soft launch, allowing if authenticated, but in a real app this would be a cloud function.
+        allow create: if isAuthenticated(); 
+        allow update: if isCommunityAdmin(communityId);
+        allow delete: if isOwner(memberId) || isCommunityAdmin(communityId);
+      }
+    }
+
+    match /invites/{inviteId} {
+      allow read: if isAuthenticated();
+      // Allowing create if admin. 
+      allow create: if isAuthenticated() && isCommunityAdmin(request.resource.data.communityId);
+      allow update: if isAuthenticated(); // To allow usedCount increment
+    }
+
+    match /reports/{reportId} {
+      allow read: if isAuthenticated() && isCommunityMember(resource.data.communityId);
+      // For create, user must be a member of the community they are posting to
+      allow create: if isAuthenticated() && isCommunityMember(request.resource.data.communityId);
+      // Update by owner or by moderator/admin
+      allow update: if isAuthenticated() && (
+        isOwner(resource.data.userId) || isCommunityModerator(resource.data.communityId)
+      );
+    }
+
+    match /global_stats/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
   }
 }

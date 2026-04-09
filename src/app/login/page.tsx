@@ -27,8 +27,14 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push('/dashboard');
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const { getUserProfile } = await import('@/lib/db/users');
+      const profile = await getUserProfile(cred.user.uid);
+      if (profile?.hasJoinedCommunity) {
+        router.push('/dashboard');
+      } else {
+        router.push('/onboarding');
+      }
     } catch (err: any) {
       console.error("Error signing in:", err);
       setError('Invalid email or password.');
@@ -45,7 +51,13 @@ export default function LoginPage() {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       await createOrUpdateUserProfile(result.user);
-      router.push('/dashboard');
+      const { getUserProfile } = await import('@/lib/db/users');
+      const profile = await getUserProfile(result.user.uid);
+      if (profile?.hasJoinedCommunity) {
+        router.push('/dashboard');
+      } else {
+        router.push('/onboarding');
+      }
     } catch (error: any) {
       console.error("Error signing in with Google:", error);
       alert(`Google Sign-In Error: ${error.message}\n\nPlease verify that Google Sign-in is explicitly ENABLED in your Firebase console under Authentication -> Sign-in methods, and that your authorized domains include your current local environment.`);
