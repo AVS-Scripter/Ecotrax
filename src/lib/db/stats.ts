@@ -6,10 +6,16 @@ export interface GlobalStats {
   monitoredZones: number;
   totalUsers: number;
   lifetimeVisits: number;
+  monthlyReports: Record<string, number>;
 }
 
 const STATS_DOC_ID = 'singleton_stats';
 const statsRef = db ? doc(db, 'global_stats', STATS_DOC_ID) : null;
+
+const initialMonths = {
+  Jan: 0, Feb: 0, Mar: 0, Apr: 0, May: 0, Jun: 0,
+  Jul: 0, Aug: 0, Sep: 0, Oct: 0, Nov: 0, Dec: 0
+};
 
 /**
  * Fetches the current global statistics.
@@ -27,7 +33,8 @@ export async function getGlobalStats(): Promise<GlobalStats | null> {
         totalReports: 0,
         monitoredZones: 0,
         totalUsers: 0,
-        lifetimeVisits: 0
+        lifetimeVisits: 0,
+        monthlyReports: initialMonths
       };
       await setDoc(statsRef, initialStats);
       return initialStats;
@@ -80,13 +87,15 @@ export async function incrementLifetimeVisits() {
 }
 
 /**
- * Increments the total reports count.
+ * Increments the total reports count and per-month tracking.
  */
 export async function incrementTotalReports() {
   if (!statsRef) return;
   try {
+    const currentMonth = new Date().toLocaleString('default', { month: 'short' });
     await updateDoc(statsRef, {
-      totalReports: increment(1)
+      totalReports: increment(1),
+      [`monthlyReports.${currentMonth}`]: increment(1)
     });
   } catch (error) {
     console.error('Error incrementing total reports:', error);

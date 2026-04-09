@@ -14,7 +14,7 @@ export interface Report {
   description: string;
   location: string;
   image: string | null;
-  status: 'in-progress' | 'completed' | 'incomplete';
+  status: 'in-progress' | 'resolved' | 'un-resolved';
   createdAt: Timestamp;
 }
 

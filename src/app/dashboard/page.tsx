@@ -17,24 +17,22 @@ import { cn } from '@/lib/utils';
 import { subscribeToGlobalStats, GlobalStats } from '@/lib/db/stats';
 import { subscribeToReports, Report } from '@/lib/db/reports';
 
-const lineData = [
-  { name: 'Jan', reports: 400 },
-  { name: 'Feb', reports: 300 },
-  { name: 'Mar', reports: 600 },
-  { name: 'Apr', reports: 800 },
-  { name: 'May', reports: 500 },
-  { name: 'Jun', reports: 900 },
-];
-
-const COLORS = ['#00FF9F', '#5AD8A7', '#1E4D40', '#42B883'];
+const COLORS = ['#00FF9F', '#0e915eff', '#67ffd4ff', '#77ac94d3'];
 
 export default function Dashboard() {
   const [stats, setStats] = useState<GlobalStats>({
     totalReports: 0,
     monitoredZones: 0,
     totalUsers: 0,
-    lifetimeVisits: 0
+    lifetimeVisits: 0,
+    monthlyReports: { Jan: 0 } 
   });
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const lineData = months.map(m => ({ 
+    name: m, 
+    reports: stats.monthlyReports ? (stats.monthlyReports[m] || 0) : 0 
+  }));
   const [reports, setReports] = useState<Report[]>([]);
 
   useEffect(() => {
@@ -71,7 +69,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { title: "Total Reports", value: stats.totalReports.toLocaleString(), icon: FileText, change: "+12%", up: true },
-          { title: "Active Issues", value: reports.filter(r => r.status !== 'completed').length.toString(), icon: AlertCircle, change: "Live", up: true },
+          { title: "Active Issues", value: reports.filter(r => r.status !== 'resolved').length.toString(), icon: AlertCircle, change: "Live", up: true },
           { title: "Total Users", value: stats.totalUsers.toLocaleString(), icon: CheckCircle2, change: "+5%", up: true },
           { title: "Lifetime Visits", value: stats.lifetimeVisits.toLocaleString(), icon: TrendingUp, change: "New", up: true },
         ].map((stat, i) => (
@@ -203,7 +201,7 @@ export default function Dashboard() {
                   <div className="text-right">
                     <div className={cn(
                       "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider inline-block mb-1",
-                      report.status === 'completed' ? 'bg-primary/20 text-primary' : 
+                      report.status === 'resolved' ? 'bg-primary/20 text-primary' : 
                       report.status === 'in-progress' ? 'bg-blue-400/20 text-blue-400' : 'bg-orange-400/20 text-orange-400'
                     )}>
                       {report.status}

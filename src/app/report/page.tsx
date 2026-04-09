@@ -74,7 +74,7 @@ export default function ReportPage() {
         description: values.description,
         location: values.location,
         image: preview,
-        status: 'in-progress',
+        status: 'un-resolved',
       });
 
       toast({
@@ -118,8 +118,8 @@ export default function ReportPage() {
             <SelectContent className="glass">
               <SelectItem value="all">All Reports</SelectItem>
               <SelectItem value="in-progress">In Progress</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="incomplete">Incomplete</SelectItem>
+              <SelectItem value="resolved">Resolved</SelectItem>
+              <SelectItem value="un-resolved">Un-resolved</SelectItem>
             </SelectContent>
           </Select>
           <Button onClick={() => setIsModalOpen(true)} variant="default" className="rounded-full px-4 py-2 neon-glow">
