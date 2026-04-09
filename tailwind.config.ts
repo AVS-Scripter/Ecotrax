@@ -96,6 +96,9 @@ export default {
         'glow': {
           '0%, 100%': { opacity: '0.8', filter: 'brightness(1)' },
           '50%': { opacity: '1', filter: 'brightness(1.5)' },
+        },
+        'shimmer': {
+          '100%': { transform: 'translateX(100%)' },
         }
       },
       animation: {
@@ -103,6 +106,7 @@ export default {
         'accordion-up': 'accordion-up 0.2s ease-out',
         'float': 'float 3s ease-in-out infinite',
         'glow': 'glow 2s ease-in-out infinite',
+        'shimmer': 'shimmer 2s infinite',
       },
     },
   },
