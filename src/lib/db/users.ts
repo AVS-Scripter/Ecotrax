@@ -1,6 +1,7 @@
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { User } from 'firebase/auth';
+import { incrementTotalUsers } from './stats';
 
 /**
  * Ensures a user profile document exists in the Firestore database.
@@ -27,6 +28,9 @@ export async function createOrUpdateUserProfile(user: User, customName?: string)
         joinedChallenges: [],
         createdAt: serverTimestamp(),
       });
+
+      // Increment global user count
+      await incrementTotalUsers();
     }
   } catch (error) {
     console.error('Error synchronizing user profile in Firestore', error);

@@ -19,7 +19,7 @@ We will use Cloud Firestore to govern our data. Here are the core collections an
 3. `global_stats` (Collection)
    A single document to hold platform-wide usage metrics.
    - Document ID: `singleton_stats`
-   - Fields: `totalReports`, `monitoredZones`, `totalUsers`.
+   - Fields: `totalReports`, `monitoredZones`, `totalUsers`, `lifetimeUsers`, `lifetimeVisits`.
    - *Note: You can update these stats via Cloud Functions or transaction batches when new users/reports are created.*
 
 4. `challenges` (Collection)

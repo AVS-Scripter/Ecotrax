@@ -48,8 +48,9 @@ export default function SignupPage() {
       const result = await signInWithPopup(auth, googleProvider);
       await createOrUpdateUserProfile(result.user);
       router.push('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error signing in with Google:", error);
+      alert(`Google Sign-In Error: ${error.message}\n\nPlease verify that Google Sign-in is explicitly ENABLED in your Firebase console under Authentication -> Sign-in methods, and that your authorized domains include your current local environment.`);
     }
   };
 
@@ -111,6 +112,7 @@ export default function SignupPage() {
 
           <div>
             <Button 
+              type="button"
               variant="outline" 
               onClick={handleGoogleSignIn}
               className="w-full rounded-2xl h-12 glass border-white/5 gap-2 hover:bg-white/5 transition-all active:scale-[0.98]"

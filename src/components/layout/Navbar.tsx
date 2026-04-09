@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
+import { UserProfileModal } from './UserProfileModal';
 
 const navItems = [
   { name: 'Home', path: '/', icon: Leaf },
@@ -21,6 +22,7 @@ const navItems = [
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const pathname = usePathname();
 
@@ -89,7 +91,10 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-4">
             {user ? (
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+                <div 
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors"
+                  onClick={() => setIsProfileModalOpen(true)}
+                >
                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border border-primary/30">
                      {user.photoURL ? (
                        <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
@@ -141,7 +146,10 @@ export function Navbar() {
             
             {user ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-3 px-4 py-3">
+                <div 
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/5 rounded-xl transition-colors"
+                  onClick={() => { setIsOpen(false); setIsProfileModalOpen(true); }}
+                >
                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
                      {user.photoURL ? (
                        <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
@@ -167,6 +175,14 @@ export function Navbar() {
             )}
           </div>
         </div>
+      )}
+
+      {user && (
+        <UserProfileModal 
+          isOpen={isProfileModalOpen} 
+          onClose={() => setIsProfileModalOpen(false)} 
+          user={user} 
+        />
       )}
     </nav>
   );

@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { 
@@ -11,9 +11,35 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { subscribeToGlobalStats, incrementLifetimeVisits, GlobalStats } from '@/lib/db/stats';
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-eco');
+  const [stats, setStats] = useState<GlobalStats>({
+    totalReports: 0,
+    monitoredZones: 0,
+    totalUsers: 0,
+    lifetimeVisits: 0
+  });
+
+  useEffect(() => {
+    // Increment lifetime visits on mount
+    incrementLifetimeVisits();
+
+    // Subscribe to stats updates
+    const unsubscribe = subscribeToGlobalStats((newStats) => {
+      setStats(newStats);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'k';
+    }
+    return num.toString();
+  };
 
   return (
     <div className="relative overflow-hidden">
@@ -58,15 +84,15 @@ export default function Home() {
             {/* Stats Counter */}
             <div className="grid grid-cols-3 gap-8 pt-8">
               <div>
-                <div className="text-3xl font-bold font-headline">12.5k</div>
+                <div className="text-3xl font-bold font-headline">{formatNumber(stats.totalReports)}</div>
                 <div className="text-xs text-muted-foreground uppercase tracking-widest mt-1">Reports</div>
               </div>
               <div>
-                <div className="text-3xl font-bold font-headline">840</div>
-                <div className="text-xs text-muted-foreground uppercase tracking-widest mt-1">Monitored</div>
+                <div className="text-3xl font-bold font-headline">{formatNumber(stats.lifetimeVisits)}</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-widest mt-1">Visits</div>
               </div>
               <div>
-                <div className="text-3xl font-bold font-headline">45.2k</div>
+                <div className="text-3xl font-bold font-headline">{formatNumber(stats.totalUsers)}</div>
                 <div className="text-xs text-muted-foreground uppercase tracking-widest mt-1">Users</div>
               </div>
             </div>

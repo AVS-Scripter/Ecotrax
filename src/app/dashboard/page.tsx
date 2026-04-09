@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
@@ -13,6 +13,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { subscribeToGlobalStats, GlobalStats } from '@/lib/db/stats';
+import { subscribeToReports, Report } from '@/lib/db/reports';
 
 const lineData = [
   { name: 'Jan', reports: 400 },
@@ -23,23 +25,34 @@ const lineData = [
   { name: 'Jun', reports: 900 },
 ];
 
-const pieData = [
-  { name: 'Air', value: 400 },
-  { name: 'Water', value: 300 },
-  { name: 'Garbage', value: 300 },
-  { name: 'Noise', value: 200 },
-];
-
 const COLORS = ['#00FF9F', '#5AD8A7', '#1E4D40', '#42B883'];
 
-const recentReports = [
-  { id: 1, type: 'Air', location: 'Brooklyn, NY', status: 'Pending', date: '2h ago' },
-  { id: 2, type: 'Water', location: 'Portland, OR', status: 'Resolved', date: '5h ago' },
-  { id: 3, type: 'Garbage', location: 'Austin, TX', status: 'Resolved', date: '1d ago' },
-  { id: 4, type: 'Noise', location: 'London, UK', status: 'In Progress', date: '2d ago' },
-];
-
 export default function Dashboard() {
+  const [stats, setStats] = useState<GlobalStats>({
+    totalReports: 0,
+    monitoredZones: 0,
+    totalUsers: 0,
+    lifetimeVisits: 0
+  });
+  const [reports, setReports] = useState<Report[]>([]);
+
+  useEffect(() => {
+    const unsubStats = subscribeToGlobalStats(setStats);
+    const unsubReports = subscribeToReports((data) => setReports(data.slice(0, 4)));
+
+    return () => {
+      unsubStats();
+      unsubReports();
+    };
+  }, []);
+
+  const pieData = [
+    { name: 'Air', value: reports.filter(r => r.issueType === 'air').length || 1 },
+    { name: 'Water', value: reports.filter(r => r.issueType === 'water').length || 1 },
+    { name: 'Garbage', value: reports.filter(r => r.issueType === 'garbage').length || 1 },
+    { name: 'Noise', value: reports.filter(r => r.issueType === 'noise').length || 1 },
+  ];
+
   return (
     <div className="pt-24 pb-12 px-6 max-w-7xl mx-auto space-y-8">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -56,10 +69,10 @@ export default function Dashboard() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { title: "Total Reports", value: "1,248", icon: FileText, change: "+12%", up: true },
-          { title: "Active Issues", value: "482", icon: AlertCircle, change: "-5%", up: false },
-          { title: "Resolved", value: "766", icon: CheckCircle2, change: "+18%", up: true },
-          { title: "Avg Resolution", value: "4.2d", icon: TrendingUp, change: "-1d", up: true },
+          { title: "Total Reports", value: stats.totalReports.toLocaleString(), icon: FileText, change: "+12%", up: true },
+          { title: "Active Issues", value: reports.filter(r => r.status !== 'completed').length.toString(), icon: AlertCircle, change: "Live", up: true },
+          { title: "Total Users", value: stats.totalUsers.toLocaleString(), icon: CheckCircle2, change: "+5%", up: true },
+          { title: "Lifetime Visits", value: stats.lifetimeVisits.toLocaleString(), icon: TrendingUp, change: "New", up: true },
         ].map((stat, i) => (
           <div key={i} className="glass p-6 rounded-2xl border border-white/5 space-y-4 hover:border-primary/20 transition-all">
             <div className="flex items-center justify-between">
@@ -149,7 +162,7 @@ export default function Dashboard() {
             {pieData.map((d, i) => (
               <div key={i} className="flex items-center gap-2 text-xs">
                 <div className="w-2 h-2 rounded-full" style={{backgroundColor: COLORS[i]}} />
-                <span className="text-muted-foreground">{d.name} ({Math.round(d.value/1200*100)}%)</span>
+                <span className="text-muted-foreground">{d.name}</span>
               </div>
             ))}
           </div>
@@ -163,36 +176,44 @@ export default function Dashboard() {
             <CardTitle>Recent Reports</CardTitle>
             <CardDescription>Most recent environmental incidents logged globally.</CardDescription>
           </div>
-          <Button variant="ghost" className="text-primary hover:bg-primary/10">View All</Button>
+          <Link href="/report">
+            <Button variant="ghost" className="text-primary hover:bg-primary/10">View All</Button>
+          </Link>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {recentReports.map((report) => (
-              <div key={report.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center">
-                    {report.type === 'Air' && <Wind className="w-5 h-5 text-blue-400" />}
-                    {report.type === 'Water' && <Droplets className="w-5 h-5 text-teal-400" />}
-                    {report.type === 'Garbage' && <Trash2 className="w-5 h-5 text-orange-400" />}
-                    {report.type === 'Noise' && <Volume2 className="w-5 h-5 text-purple-400" />}
+            {reports.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">No recent reports found.</div>
+            ) : (
+              reports.map((report) => (
+                <div key={report.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center">
+                      {report.issueType === 'air' && <Wind className="w-5 h-5 text-blue-400" />}
+                      {report.issueType === 'water' && <Droplets className="w-5 h-5 text-teal-400" />}
+                      {report.issueType === 'garbage' && <Trash2 className="w-5 h-5 text-orange-400" />}
+                      {report.issueType === 'noise' && <Volume2 className="w-5 h-5 text-purple-400" />}
+                    </div>
+                    <div>
+                      <div className="font-bold capitalize">{report.issueType} Incident</div>
+                      <div className="text-xs text-muted-foreground">{report.location}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-bold">{report.type} Incident</div>
-                    <div className="text-xs text-muted-foreground">{report.location}</div>
+                  <div className="text-right">
+                    <div className={cn(
+                      "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider inline-block mb-1",
+                      report.status === 'completed' ? 'bg-primary/20 text-primary' : 
+                      report.status === 'in-progress' ? 'bg-blue-400/20 text-blue-400' : 'bg-orange-400/20 text-orange-400'
+                    )}>
+                      {report.status}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                      {report.createdAt ? new Date(report.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className={cn(
-                    "text-xs px-2 py-1 rounded-full font-medium inline-block mb-1",
-                    report.status === 'Resolved' ? 'bg-primary/20 text-primary' : 
-                    report.status === 'Pending' ? 'bg-orange-400/20 text-orange-400' : 'bg-blue-400/20 text-blue-400'
-                  )}>
-                    {report.status}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-widest">{report.date}</div>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
