@@ -100,78 +100,96 @@ export default function Home() {
 
           <div className="relative animate-in fade-in slide-in-from-right-8 duration-1000">
             <div className="absolute inset-0 bg-primary/20 blur-[60px] rounded-full" />
-            <div className="relative glass rounded-3xl overflow-hidden border border-white/10 shadow-2xl aspect-video lg:aspect-square">
-              {heroImage && (
-                <Image 
-                  src={heroImage.imageUrl} 
-                  alt={heroImage.description} 
-                  fill 
-                  className="object-cover opacity-80"
-                  data-ai-hint={heroImage.imageHint}
-                />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+            <div className="relative h-full w-full glass rounded-3xl border border-white/10 shadow-2xl flex flex-col p-6 md:p-8 overflow-hidden min-h-[480px]">
+              {/* Background gradient effect inside the card to simulate atmosphere */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
               
-              {/* Enhanced Real-time Monitoring Card */}
-              <div className="absolute bottom-6 left-6 right-6 glass p-6 rounded-2xl border border-white/10 shadow-2xl">
-                <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                      <Sun className="w-5 h-5 text-primary" suppressHydrationWarning />
+              <div className="relative z-10 flex flex-col h-full">
+                {/* Header: Location & Temperature */}
+                <div className="flex items-start justify-between pb-6 border-b border-white/10 mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 shadow-inner">
+                      {/* Loading spinner or weather icon placeholder */}
+                      <Sun className="w-7 h-7 text-muted-foreground/50" suppressHydrationWarning />
                     </div>
                     <div>
-                      <div className="text-sm font-bold">Downtown District</div>
-                      <div className="text-xs text-muted-foreground">Partly Cloudy</div>
+                      <h3 className="text-xl font-bold font-headline">nill</h3>
+                      <p className="text-sm text-muted-foreground">Awaiting Location</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-1 text-lg font-bold text-primary">
-                      <Thermometer className="w-4 h-4" suppressHydrationWarning /> 24°C
+                  
+                  <div className="text-right flex flex-col items-end">
+                    <div className="flex items-center gap-2 text-4xl md:text-5xl font-bold font-headline text-muted-foreground/80 tracking-tighter">
+                      <Thermometer className="w-8 h-8 opacity-50" suppressHydrationWarning /> nill°
                     </div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Temperature</div>
+                    <div className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mt-1">Temperature</div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                      <BarChart3 className="w-4 h-4 text-blue-400" suppressHydrationWarning />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold">24 (Good)</div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">AQI Level</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                      <Droplets className="w-4 h-4 text-teal-400" suppressHydrationWarning />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold">62%</div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">Humidity</div>
+                {/* Main Environmental Stats Grid */}
+                <div className="grid grid-cols-2 gap-4 md:gap-6 flex-1">
+                  {/* AQI */}
+                  <div className="glass p-5 rounded-2xl border border-white/5 hover:bg-white/5 transition-colors group flex flex-col justify-center">
+                    <div className="flex items-center gap-4">
+                       <div className="w-10 h-10 shrink-0 rounded-xl bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                         <BarChart3 className="w-5 h-5 text-blue-400" />
+                       </div>
+                       <div>
+                         <div className="text-lg font-bold text-muted-foreground">nill</div>
+                         <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">AQI Level</div>
+                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                      <CloudRain className="w-4 h-4 text-indigo-400" suppressHydrationWarning />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold">12%</div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">Rain Chance</div>
+                  {/* Humidity */}
+                  <div className="glass p-5 rounded-2xl border border-white/5 hover:bg-white/5 transition-colors group flex flex-col justify-center">
+                    <div className="flex items-center gap-4">
+                       <div className="w-10 h-10 shrink-0 rounded-xl bg-teal-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                         <Droplets className="w-5 h-5 text-teal-400" />
+                       </div>
+                       <div>
+                         <div className="text-lg font-bold text-muted-foreground">nill</div>
+                         <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Humidity</div>
+                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                      <Wind className="w-4 h-4 text-emerald-400" suppressHydrationWarning />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold">0.5mm</div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">Precipitation</div>
+                  {/* Rain Chance */}
+                  <div className="glass p-5 rounded-2xl border border-white/5 hover:bg-white/5 transition-colors group flex flex-col justify-center">
+                    <div className="flex items-center gap-4">
+                       <div className="w-10 h-10 shrink-0 rounded-xl bg-indigo-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                         <CloudRain className="w-5 h-5 text-indigo-400" />
+                       </div>
+                       <div>
+                         <div className="text-lg font-bold text-muted-foreground">nill</div>
+                         <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Rain Chance</div>
+                       </div>
                     </div>
                   </div>
+
+                  {/* Wind / Precipitation */}
+                  <div className="glass p-5 rounded-2xl border border-white/5 hover:bg-white/5 transition-colors group flex flex-col justify-center">
+                    <div className="flex items-center gap-4">
+                       <div className="w-10 h-10 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                         <Wind className="w-5 h-5 text-emerald-400" />
+                       </div>
+                       <div>
+                         <div className="text-lg font-bold text-muted-foreground">nill</div>
+                         <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Precipitation</div>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* API Initializer Button */}
+                <div className="mt-6 pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                   <p className="text-[11px] md:text-xs text-muted-foreground max-w-[240px] leading-relaxed">
+                     Enable location access to populate dashboard with Live Meteorological Data.
+                   </p>
+                   <Button variant="outline" className="rounded-full shrink-0 text-xs font-bold uppercase tracking-wider h-10 bg-primary/10 text-primary hover:bg-primary hover:text-black border-primary/20 transition-all">
+                     <MapIcon className="w-4 h-4 mr-2" />
+                     Enable Sync
+                   </Button>
                 </div>
               </div>
             </div>
