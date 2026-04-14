@@ -61,16 +61,53 @@ export async function updateMemberRole(communityId: string, targetUserId: string
   }
 }
 
-import { fbFunctions } from '../firebase';
-import { httpsCallable } from 'firebase/functions';
+import { arrayRemove, increment } from 'firebase/firestore';
 
-export async function leaveCommunity(communityId: string) {
-  if (!fbFunctions) throw new Error("Firebase functions not initialized");
+export async function leaveCommunity(communityId: string, userId: string) {
+  if (!db) throw new Error("Firebase not initialized");
   
   try {
-    const leaveFn = httpsCallable(fbFunctions, 'leaveCommunity');
-    const result = await leaveFn({ communityId });
-    return result.data;
+    const result = await runTransaction(db, async (transaction) => {
+      const commRef = doc(db, 'communities', communityId);
+      const memberRef = doc(db, 'communities', communityId, 'members', userId);
+      const memberSnap = await transaction.get(memberRef);
+
+      if (!memberSnap.exists()) {
+        throw new Error("Not a member of this community.");
+      }
+
+      const role = memberSnap.data()?.role;
+
+      if (role === 'admin') {
+        // Check if this is the last admin
+        const membersRef = collection(db, 'communities', communityId, 'members');
+        // Note: Querying in a transaction is tricky in some versions, 
+        // but here we can just use the memberCount if we trust it, 
+        // or actually fetch all members (though that's expensive).
+        // Since we are moving to client-side, we'll try to do a check.
+        const q = query(membersRef);
+        const membersSnap = await getDocs(q); 
+        const otherAdmins = membersSnap.docs.filter(d => d.id !== userId && d.data().role === 'admin');
+        
+        if (otherAdmins.length === 0) {
+          throw new Error("You are the final admin. Transfer ownership or delete the community before leaving.");
+        }
+      }
+
+      const userRef = doc(db, 'users', userId);
+
+      transaction.delete(memberRef);
+      transaction.update(commRef, { 
+        'metadata.memberCount': increment(-1) 
+      });
+      transaction.update(userRef, {
+        joinedCommunities: arrayRemove(communityId)
+      });
+
+      return { success: true };
+    });
+
+    return result;
   } catch(e) {
     console.error("Error leaving community", e);
     throw e;

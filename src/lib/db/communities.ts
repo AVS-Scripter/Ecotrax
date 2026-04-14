@@ -82,13 +82,27 @@ export async function createCommunity(name: string, icon: string, userId: string
   }
 }
 
-import { fbFunctions } from '../firebase';
-import { httpsCallable } from 'firebase/functions';
+export async function deleteCommunity(communityId: string, userId: string) {
+  if (!db) throw new Error("Firebase not initialized");
+  
+  const communityRef = doc(db, COMMUNITIES_COLLECTION, communityId);
+  const memberRef = doc(db, COMMUNITIES_COLLECTION, communityId, 'members', userId);
+  const memberSnap = await getDoc(memberRef);
 
-export async function deleteCommunity(communityId: string) {
-  if (!fbFunctions) throw new Error("Firebase functions not initialized");
-  const deleteFn = httpsCallable(fbFunctions, 'deleteCommunity');
-  await deleteFn({ communityId });
+  if (!memberSnap.exists() || memberSnap.data()?.role !== 'admin') {
+    throw new Error("Only admins can delete a community.");
+  }
+
+  await updateDoc(communityRef, {
+    'metadata.isDeleted': true,
+    'metadata.deletedAt': serverTimestamp()
+  });
+
+  // Note: Full cleanup (removing from all users' arrays) cannot be done 
+  // safely from the client-side for all users due to permission restrictions.
+  // Instead, the UI should filter out deleted communities.
+  
+  return { success: true };
 }
 
 export async function getCommunity(communityId: string): Promise<Community | null> {

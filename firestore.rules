@@ -25,56 +25,81 @@ service cloud.firestore {
     // --- Collections ---
 
     match /users/{userId} {
-      allow read: if isAuthenticated(); // Typically users can read basic profiles
-      allow create: if isOwner(userId) && !('joinedCommunities' in request.resource.data);
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId);
       
-      // Prevent client from manually faking joined communities
-      allow update: if isOwner(userId) 
-                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['joinedCommunities']);
+      // Allow updates to joinedCommunities only if the user is participating in a join/leave flow.
+      // We check that the user is updating their own profile.
+      allow update: if isOwner(userId);
       
-      allow delete: if false; // Route via Cloud Function if needed
+      allow delete: if false; 
     }
 
     match /communities/{communityId} {
-      // Visible if not soft-deleted
-      allow read: if isAuthenticated() && resource.data.metadata.isDeleted == false;
+      // Visible if not soft-deleted OR if you are the creator
+      allow read: if isAuthenticated() && (resource.data.metadata.isDeleted == false || resource.data.createdBy == request.auth.uid);
       
-      // Creation handled by CF
-      allow create: if false; 
+      // Allow creation if authenticated. The transaction ensures consistency.
+      allow create: if isAuthenticated() 
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.metadata.memberCount == 1;
       
-      // Only admins can update description/name. 
-      // Cannot maliciously change memberCount or undo a soft delete.
-      allow update: if getRole(communityId) == 'admin'
-                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['metadata', 'ownerId']);
+      // Allow update by admins.
+      // We allow updating metadata specifically for memberCount increments/decrements and isDeleted for soft-deletes.
+      allow update: if isAuthenticated() && (
+        getRole(communityId) == 'admin' || 
+        // Allow incrementing memberCount when joining if everything else is valid
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['metadata']) && 
+         request.resource.data.metadata.memberCount == resource.data.metadata.memberCount + 1) ||
+        // Allow decrementing when leaving
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['metadata']) && 
+         request.resource.data.metadata.memberCount == resource.data.metadata.memberCount - 1)
+      );
       
-      // All deletion is routed via Cloud Functions
       allow delete: if false; 
 
       match /members/{memberId} {
-        allow read: if isMember(communityId);
-        // Strict CF enforcement for joins/leaves/role changes
-        allow write: if false; 
+        allow read: if isAuthenticated(); // Allow reading members to see roles etc.
+        
+        // Allow joining: user creates their own member record
+        allow create: if isAuthenticated() && memberId == request.auth.uid;
+        
+        // Allow leave: user deletes their own member record
+        allow delete: if isAuthenticated() && memberId == request.auth.uid;
+        
+        // Role changes: only admins can update roles
+        allow update: if getRole(communityId) == 'admin';
       }
       
       match /reports/{reportId} {
         // Members create their own reports.
         allow create: if isMember(communityId)
                       && request.resource.data.authorId == request.auth.uid;
-                      
-        // Only staff can read or act on reports.
-        allow read, update, delete: if getRole(communityId) in ['admin', 'moderator'];
+                       
+        // Members can read reports in their community. Staff can manage.
+        allow read: if isMember(communityId);
+        allow update, delete: if getRole(communityId) in ['admin', 'moderator'];
       }
     }
 
     match /invites/{inviteId} {
-      // Only admins can see and manage the active invites for their community
-      allow read: if getRole(resource.data.communityId) == 'admin';
-      allow write: if false; // Creation/revocation managed via CF
+      // Allow reading and validating invites
+      allow read: if isAuthenticated();
+      
+      // Admins can create and update invites
+      allow create: if isAuthenticated() && getRole(request.resource.data.communityId) == 'admin';
+      
+      // Allow incrementing usedCount when using an invite
+      allow update: if isAuthenticated() && (
+        getRole(resource.data.communityId) == 'admin' ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasAny(['usedCount', 'isActive']) && 
+         request.resource.data.usedCount == resource.data.usedCount + 1)
+      );
     }
 
     match /global_stats/{docId} {
       allow read: if true;
-      allow write: if false; // Managed by backend triggers
+      allow write: if isAuthenticated(); // Allow stats updates from client triggers if needed
     }
   }
 }

@@ -78,7 +78,7 @@ function CommunityHub() {
     if (!activeId || !user) return;
     if (confirm("Are you sure you want to leave this community?")) {
         try {
-            await leaveCommunity(activeId);
+            await leaveCommunity(activeId, user.uid);
             router.push('/onboarding');
         } catch(e: any) {
             alert(e.message);

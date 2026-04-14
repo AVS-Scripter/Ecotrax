@@ -88,7 +88,7 @@ export default function AdminPanel() {
     if (!activeId) return;
     if (confirm("CRITICAL: Are you sure you want to delete this community? All data will be soft-deleted and cleaned up in the background. This cannot be undone.")) {
         try {
-            await deleteCommunity(activeId);
+            await deleteCommunity(activeId, user.uid);
             router.push('/onboarding');
         } catch (e: any) {
             alert(e.message);
