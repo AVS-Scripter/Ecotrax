@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   Search, Filter, MapPin, Wind, Droplets, Trash2, Volume2, 
   Maximize2, ZoomIn, ZoomOut, Layers, AlertCircle, Info, Locate, Navigation 
@@ -38,14 +38,15 @@ interface Report {
 
 export default function MapPage() {
   const { toast } = useToast();
+  const map = useMap();
   const [reports, setReports] = useState<Report[]>([]);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [permissionStatus, setPermissionStatus] = useState<'prompt' | 'granted' | 'denied'>('prompt');
+  const hasCenteredOnUser = useRef(false);
   
-  const MAP_ID = "exotrack_map_v1"; // You can create a Map ID in Google Cloud Console for styling
+  const MAP_ID = "exotrack_map_v1";
 
   // Fetch reports from Supabase
   useEffect(() => {
@@ -63,7 +64,6 @@ export default function MapPage() {
 
     fetchReports();
 
-    // Subscribe to changes
     const channel = supabase
       .channel('map-reports')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, () => {
@@ -76,25 +76,22 @@ export default function MapPage() {
     };
   }, []);
 
-  // Check initial permission status and handle auto-locate
+  // Check initial permission status or show modal
   useEffect(() => {
     if ("permissions" in navigator) {
       navigator.permissions.query({ name: 'geolocation' as PermissionName }).then((result) => {
-        setPermissionStatus(result.state as any);
         if (result.state === 'granted') {
-          handleLocate();
+          handleLocate(true); // Silent locate if already granted
         } else if (result.state === 'prompt') {
-          // Wait a bit then show our custom modal
-          setTimeout(() => setIsLocationModalOpen(true), 1500);
+          setTimeout(() => setIsLocationModalOpen(true), 1200);
         }
       });
     } else {
-      // Fallback for browsers that don't support permissions API
-      setTimeout(() => setIsLocationModalOpen(true), 1500);
+      setTimeout(() => setIsLocationModalOpen(true), 1200);
     }
   }, []);
 
-  const handleLocate = useCallback(() => {
+  const handleLocate = useCallback((isInitial = false) => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -103,17 +100,25 @@ export default function MapPage() {
             lng: position.coords.longitude
           };
           setUserLocation(coords);
-          setPermissionStatus('granted');
           setIsLocationModalOpen(false);
+          
+          // Only auto-pan to user if it's the first time or they manually clicked locate
+          if (!isInitial || !hasCenteredOnUser.current) {
+            // We use a helper to pan the map if it's already loaded
+            // Since useMap might be null here, we can't use it directly in handleLocate easily
+            // Instead, we rely on the useEffect below to handle the initial pan
+            hasCenteredOnUser.current = true;
+          }
         },
         (error) => {
-          console.error("Error getting location:", error);
-          setPermissionStatus('denied');
-          toast({
-            title: "Location Access Denied",
-            description: "We couldn't get your location. Please check your browser settings.",
-            variant: "destructive",
-          });
+          if (!isInitial) {
+            console.error("Error getting location:", error);
+            toast({
+              title: "Location Access Denied",
+              description: "We couldn't get your location. Please check your browser settings.",
+              variant: "destructive",
+            });
+          }
         }
       );
     }
@@ -157,10 +162,10 @@ export default function MapPage() {
               variant="outline" 
               size="sm" 
               className="w-full text-[10px] tracking-widest uppercase gap-2 h-9 rounded-xl border-white/10 hover:bg-white/5"
-              onClick={handleLocate}
+              onClick={() => handleLocate(false)}
             >
               <Locate className="w-3 h-3 text-primary" />
-              {userLocation ? "Location Active" : "Find Reports Near Me"}
+              {userLocation ? "Re-center on Me" : "Find Reports Near Me"}
             </Button>
           </div>
 
@@ -185,7 +190,6 @@ export default function MapPage() {
                 {selectedReport.description}
                 <br />
                 <span className="text-primary font-bold mt-2 block text-xs">Location: {selectedReport.location}</span>
-                <span className="text-muted-foreground text-[10px] mt-1 block">Status: {selectedReport.status}</span>
               </p>
               <div className="flex gap-2">
                 <Button variant="default" className="flex-1 rounded-xl h-9 text-xs">View Full Details</Button>
@@ -199,21 +203,22 @@ export default function MapPage() {
         <div className="flex-1 relative">
           <Map
             defaultCenter={userLocation || { lat: 0, lng: 0 }}
-            defaultZoom={userLocation ? 13 : 2}
-            center={userLocation}
+            defaultZoom={userLocation ? 13 : 3}
             mapId={MAP_ID}
             disableDefaultUI={true}
             className="w-full h-full"
             gestureHandling={'greedy'}
-            styles={darkMapStyles} // Optional fallback dark style
+            styles={darkMapStyles}
           >
-            {/* User Location Marker */}
+            <MapHandler userLocation={userLocation} />
+
+            {/* User Location Marker - Slightly Larger */}
             {userLocation && (
               <AdvancedMarker position={userLocation}>
                 <div className="relative">
-                  <div className="absolute -inset-4 bg-primary/20 rounded-full animate-ping" />
-                  <div className="w-5 h-5 bg-primary rounded-full border-2 border-white shadow-2xl flex items-center justify-center">
-                    <Navigation className="w-3 h-3 text-white fill-current transform -rotate-45" />
+                  <div className="absolute -inset-6 bg-primary/20 rounded-full animate-ping" />
+                  <div className="w-8 h-8 bg-primary rounded-full border-2 border-white shadow-2xl flex items-center justify-center transition-transform hover:scale-110">
+                    <Navigation className="w-4 h-4 text-white fill-current transform -rotate-45" />
                   </div>
                 </div>
               </AdvancedMarker>
@@ -237,17 +242,16 @@ export default function MapPage() {
                 </div>
               </AdvancedMarker>
             ))}
-          </Map>
 
-          {/* Map Controls */}
-          <MapControls userLocation={userLocation} onLocate={handleLocate} />
+            <MapControls onLocate={() => handleLocate(false)} />
+          </Map>
         </div>
 
         {/* Permission Dialog */}
         <LocationPermissionDialog 
           isOpen={isLocationModalOpen}
           onOpenChange={setIsLocationModalOpen}
-          onAccept={handleLocate}
+          onAccept={() => handleLocate(false)}
           onDecline={() => setIsLocationModalOpen(false)}
         />
       </div>
@@ -255,11 +259,29 @@ export default function MapPage() {
   );
 }
 
-function MapControls({ userLocation, onLocate }: { userLocation: any, onLocate: () => void }) {
+/**
+ * Component to handle map interactions like panning
+ */
+function MapHandler({ userLocation }: { userLocation: {lat: number, lng: number} | null }) {
+  const map = useMap();
+  const hasCentered = useRef(false);
+
+  useEffect(() => {
+    if (map && userLocation && !hasCentered.current) {
+      map.setCenter(userLocation);
+      map.setZoom(13);
+      hasCentered.current = true;
+    }
+  }, [map, userLocation]);
+
+  return null;
+}
+
+function MapControls({ onLocate }: { onLocate: () => void }) {
   const map = useMap();
   
   return (
-    <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-10">
+    <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-10 pointer-events-auto">
       <Button 
         variant="outline" 
         size="icon" 
@@ -279,96 +301,32 @@ function MapControls({ userLocation, onLocate }: { userLocation: any, onLocate: 
       <Button 
         variant="outline" 
         size="icon" 
-        className={cn(
-          "glass rounded-xl shadow-xl hover:bg-white/10",
-          userLocation && "text-primary border-primary/50"
-        )}
+        className="glass rounded-xl shadow-xl hover:bg-white/10"
         onClick={onLocate}
       >
-        <Locate className="w-4 h-4" />
+        <Locate className="w-4 h-4 text-primary" />
       </Button>
     </div>
   );
 }
 
-// Fallback dark map styles if Map ID is not configured
 const darkMapStyles = [
   { elementType: "geometry", stylers: [{ color: "#0c1410" }] },
   { elementType: "labels.text.stroke", stylers: [{ color: "#0c1410" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
-  {
-    featureType: "administrative.locality",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#d59563" }],
-  },
-  {
-    featureType: "poi",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#d59563" }],
-  },
-  {
-    featureType: "poi.park",
-    elementType: "geometry",
-    stylers: [{ color: "#05130d" }],
-  },
-  {
-    featureType: "poi.park",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#6b9a76" }],
-  },
-  {
-    featureType: "road",
-    elementType: "geometry",
-    stylers: [{ color: "#1a2a22" }],
-  },
-  {
-    featureType: "road",
-    elementType: "geometry.stroke",
-    stylers: [{ color: "#212a25" }],
-  },
-  {
-    featureType: "road",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#9ca5b3" }],
-  },
-  {
-    featureType: "road.highway",
-    elementType: "geometry",
-    stylers: [{ color: "#2c3e34" }],
-  },
-  {
-    featureType: "road.highway",
-    elementType: "geometry.stroke",
-    stylers: [{ color: "#1f2823" }],
-  },
-  {
-    featureType: "road.highway",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#f3d19c" }],
-  },
-  {
-    featureType: "transit",
-    elementType: "geometry",
-    stylers: [{ color: "#2f3948" }],
-  },
-  {
-    featureType: "transit.station",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#d59563" }],
-  },
-  {
-    featureType: "water",
-    elementType: "geometry",
-    stylers: [{ color: "#0a1f18" }],
-  },
-  {
-    featureType: "water",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#515c6d" }],
-  },
-  {
-    featureType: "water",
-    elementType: "labels.text.stroke",
-    stylers: [{ color: "#17263c" }],
-  },
+  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+  { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#05130d" }] },
+  { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#1a2a22" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a25" }] },
+  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#2c3e34" }] },
+  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2823" }] },
+  { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
+  { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] },
+  { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0a1f18" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
+  { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] },
 ];

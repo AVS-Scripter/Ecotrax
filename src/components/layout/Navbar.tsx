@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { signOut } from '@/lib/auth';
+import { UserProfileModal } from './UserProfileModal';
 
 const navItems = [
   { name: 'Home', path: '/', icon: Leaf },
