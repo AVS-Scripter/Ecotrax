@@ -43,8 +43,9 @@ export default function OnboardingPage() {
       const { communityId } = await createCommunity(createName, createIcon, user.uid, profile.displayName);
       router.push(`/community?id=${communityId}`);
     } catch (error: any) {
-      console.error(error);
-      setCreateError(error.message || 'Error occurred while creating community. Are you sure you are not already part of one?');
+      console.error('Create community error:', error);
+      const message = error?.message || error?.code || JSON.stringify(error) || 'Error occurred while creating community. Are you sure you are not already part of one?';
+      setCreateError(message);
     } finally {
       setIsCreating(false);
     }

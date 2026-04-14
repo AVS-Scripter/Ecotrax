@@ -32,6 +32,7 @@ Main community data repository. Uses a metadata map to separate content from sta
     - `isDeleted`: boolean (For soft-delete patterns)
     - `deletedAt`: timestamp | null
   - `createdAt`: timestamp
+  - `joinCode` : ID
 
 ### Subcollection: `members`
 Path: `communities/{communityId}/members/{userId}`

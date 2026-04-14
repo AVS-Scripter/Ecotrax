@@ -56,10 +56,10 @@ export async function createCommunity(name: string, icon: string, userId: string
         joinedAt: serverTimestamp(),
       });
 
-      // Update user joinedCommunities
-      transaction.update(userRef, {
+      // Update user joinedCommunities - use set with merge to create if doesn't exist
+      transaction.set(userRef, {
         joinedCommunities: arrayUnion(communityRef.id)
-      });
+      }, { merge: true });
 
       // Create a default invite link
       const expiresAt = new Date();
@@ -77,8 +77,8 @@ export async function createCommunity(name: string, icon: string, userId: string
     });
 
     return { communityId: communityRef.id, inviteCode };
-  } catch (error) {
-    console.error('Error creating community:', error);
+  } catch (error: any) {
+    console.error('Error creating community:', error?.code, error?.message, error);
     throw error;
   }
 }
