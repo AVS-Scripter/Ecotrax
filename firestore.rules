@@ -86,8 +86,13 @@ service cloud.firestore {
       // Allow reading and validating invites
       allow read: if isAuthenticated();
       
-      // Admins can create and update invites
-      allow create: if isAuthenticated() && getRole(request.resource.data.communityId) == 'admin';
+      // Admins can create invites for their community. 
+      // We also allow the creator of a community to create an invite in the same transaction.
+      allow create: if isAuthenticated() && (
+        (request.resource.data.communityId != null && 
+         getAfter(/databases/$(database)/documents/communities/$(request.resource.data.communityId)).data.createdBy == request.auth.uid) ||
+        getRole(request.resource.data.communityId) == 'admin'
+      );
       
       // Allow incrementing usedCount when using an invite
       allow update: if isAuthenticated() && (
