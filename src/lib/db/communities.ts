@@ -26,6 +26,12 @@ export async function createCommunity(name: string, icon: string, userId: string
 
   try {
     await runTransaction(db, async (transaction) => {
+      // Validate that the user hasn't already joined a community
+      const userSnap = await transaction.get(userRef);
+      if (userSnap.exists() && userSnap.data().hasJoinedCommunity) {
+        throw new Error("You are already part of a community! Please leave your current community before creating a new one.");
+      }
+
       // Create community
       transaction.set(communityRef, {
         name,

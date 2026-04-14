@@ -9,21 +9,40 @@ import { Users, Settings, LogOut, ShieldAlert, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import Link from 'next/link';
-import { OnboardingGuard } from '@/components/providers/OnboardingGuard';
 
 export default function CommunityPageWrapper() {
-  return (
-    <OnboardingGuard>
-       <CommunityHub />
-    </OnboardingGuard>
-  )
+  const { user, loading, communityId, isOnboarded } = useAuth();
+
+  if (loading) {
+    return <div className="pt-24 text-center">Loading...</div>;
+  }
+
+  if (!user || !isOnboarded || !communityId) {
+    return (
+      <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto space-y-8 text-center pt-32">
+        <h1 className="text-3xl font-headline font-bold">Community Hub</h1>
+        <p className="text-muted-foreground">Sign in and join a community to interact with your local group.</p>
+        {!user ? (
+            <Link href="/login">
+                <Button className="mt-4 neon-glow rounded-xl">Sign in to continue</Button>
+            </Link>
+        ) : (
+            <Link href="/onboarding">
+                <Button className="mt-4 neon-glow rounded-xl">Join a Community</Button>
+            </Link>
+        )}
+      </div>
+    );
+  }
+
+  return <CommunityHub />;
 }
 
 function CommunityHub() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queriedId = searchParams.get('id');
-  const { user, profile, communityId: userCommunityId } = useAuth();
+  const { user, communityId: userCommunityId } = useAuth();
   
   // Use the queried ID if present, otherwise fallback to the user's community
   const activeId = queriedId || userCommunityId;

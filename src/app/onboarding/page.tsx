@@ -18,6 +18,7 @@ export default function OnboardingPage() {
   const [createName, setCreateName] = useState('');
   const [createIcon, setCreateIcon] = useState('🌍');
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   const [joinCode, setJoinCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
@@ -37,12 +38,13 @@ export default function OnboardingPage() {
     e.preventDefault();
     if (!user || !profile) return;
     setIsCreating(true);
+    setCreateError('');
     try {
       const { communityId } = await createCommunity(createName, createIcon, user.uid, profile.name);
       router.push(`/community?id=${communityId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Error creating community');
+      setCreateError(error.message || 'Error occurred while creating community. Are you sure you are not already part of one?');
     } finally {
       setIsCreating(false);
     }
@@ -125,6 +127,7 @@ export default function OnboardingPage() {
                 </div>
 
                 <form onSubmit={handleCreate} className="space-y-4 relative z-10">
+                    {createError && <div className="text-red-500 text-sm font-bold text-center bg-red-500/10 py-2 rounded-xl">{createError}</div>}
                     <div className="grid grid-cols-4 gap-2">
                         <div className="col-span-1 space-y-2">
                             <label className="text-xs font-bold uppercase tracking-widest ml-1">Icon</label>
