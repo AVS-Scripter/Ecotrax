@@ -72,6 +72,31 @@ CREATE TABLE IF NOT EXISTS global_stats (
 );
 
 -- =========================
+-- AUTH SYNC: auto-populate public.users from auth.users
+-- =========================
+
+-- Function to sync new auth.users into public.users
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.users (id, name)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'name', 'User')
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- Trigger: automatically insert user into public.users when auth.users is created
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
+
+-- =========================
 -- TRIGGERS
 -- =========================
 
@@ -184,6 +209,8 @@ ALTER TABLE global_stats ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "read own user" ON users FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "update own user" ON users FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "insert own user" ON users FOR INSERT WITH CHECK (auth.uid() = id);
+-- Allow trigger/system functions to insert during auth sync
+CREATE POLICY "system insert user" ON users FOR INSERT WITH CHECK (auth.uid() IS NULL);
 
 -- COMMUNITIES
 CREATE POLICY "members read communities" ON communities FOR SELECT USING (

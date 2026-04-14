@@ -1,9 +1,7 @@
-
 "use client";
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { 
   ArrowRight, Leaf, Shield, Map as MapIcon, Globe, 
   BarChart3, AlertTriangle, Sun, Thermometer, 
@@ -14,9 +12,10 @@ import { cn } from '@/lib/utils';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { supabase } from '@/lib/supabase';
 import { LocationPermissionDialog } from '@/components/map/LocationPermissionDialog';
+import { useLocation } from '@/components/providers/LocationProvider';
 
 export default function Home() {
-  const heroImage = PlaceHolderImages.find(img => img.id === 'hero-eco');
+  const { weather, loading: isSyncing, syncLocation, syncWeather } = useLocation();
   const [stats, setStats] = useState<any>({
     total_reports: 0,
     monitored_zones: 0,
@@ -25,8 +24,6 @@ export default function Home() {
     monthly_reports: 0
   });
 
-  const [weather, setWeather] = useState<any>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   useEffect(() => {
@@ -48,7 +45,6 @@ export default function Home() {
 
     fetchStats();
 
-    // Set up real-time subscription for global stats
     const channel = supabase
       .channel('global-stats')
       .on('postgres_changes', { 
@@ -66,49 +62,10 @@ export default function Home() {
     };
   }, []);
 
-  const fetchWeather = async (lat: number, lng: number) => {
-    setIsSyncing(true);
-    try {
-      const [weatherRes, aqiRes, geoRes] = await Promise.all([
-        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code&hourly=precipitation_probability`),
-        fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=european_aqi`),
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
-      ]);
-
-      const weatherData = await weatherRes.json();
-      const aqiData = await aqiRes.json();
-      const geoData = await geoRes.json();
-
-      const city = geoData.address.city || geoData.address.town || geoData.address.village || geoData.address.suburb || "Current Area";
-
-      setWeather({
-        city,
-        temp: Math.round(weatherData.current.temperature_2m),
-        humidity: weatherData.current.relative_humidity_2m,
-        precipitation: weatherData.current.precipitation,
-        rainChance: weatherData.hourly.precipitation_probability[0],
-        aqi: Math.round(aqiData.current.european_aqi),
-        condition: weatherData.current.weather_code
-      });
-      
-    } catch (error) {
-      console.error("Weather fetch failed:", error);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleLocateAndSync = () => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          fetchWeather(position.coords.latitude, position.coords.longitude);
-        },
-        (error) => {
-          console.error("Geolocation error:", error);
-          alert("Could not get location. Please check your browser settings.");
-        }
-      );
+  const handleLocateAndSync = async () => {
+    const coords = await syncLocation(true); // Always force fresh location when clicking sync
+    if (coords) {
+      await syncWeather(coords.lat, coords.lng, true);
     }
   };
 

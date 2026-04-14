@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
-  Search, Filter, MapPin, Wind, Droplets, Trash2, Volume2, 
-  Maximize2, ZoomIn, ZoomOut, Layers, AlertCircle, Info, Locate, Navigation 
+  Search, Wind, Droplets, Trash2, Volume2, 
+  ZoomIn, ZoomOut, Info, Locate, Navigation 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { LocationPermissionDialog } from '@/components/map/LocationPermissionDialog';
 import { useToast } from '@/hooks/use-toast';
+import { useLocation } from '@/components/providers/LocationProvider';
 
 // Types for our reports
 interface Report {
@@ -43,11 +44,20 @@ export default function MapPage() {
 function MapContent() {
   const { toast } = useToast();
   const map = useMap();
+  const { coordinates: cachedCoords, syncLocation } = useLocation();
+  
   const [reports, setReports] = useState<Report[]>([]);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [activeFilter, setActiveFilter] = useState('all');
-  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(cachedCoords);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+
+  // Sync internal location state with context
+  useEffect(() => {
+    if (cachedCoords) {
+      setUserLocation(cachedCoords);
+    }
+  }, [cachedCoords]);
 
   // Fetch reports from Supabase
   useEffect(() => {
@@ -77,8 +87,10 @@ function MapContent() {
     };
   }, []);
 
-  // Check initial permission status or show modal
+  // Check initial permission status or show modal ONLY if no cached location
   useEffect(() => {
+    if (cachedCoords) return; // Skip if we already have a location
+
     if ("permissions" in navigator) {
       navigator.permissions.query({ name: 'geolocation' as PermissionName }).then((result) => {
         if (result.state === 'granted') {
@@ -90,37 +102,29 @@ function MapContent() {
     } else {
       setTimeout(() => setIsLocationModalOpen(true), 1200);
     }
-  }, []);
+  }, [cachedCoords]);
 
-  const handleLocate = useCallback((isInitial = false) => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const coords = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          };
-          setUserLocation(coords);
-          setIsLocationModalOpen(false);
-          
-          if (map) {
-            map.panTo(coords);
-            if (!isInitial) map.setZoom(14);
-          }
-        },
-        (error) => {
-          if (!isInitial) {
-            console.error("Error getting location:", error);
-            toast({
-              title: "Location Access Denied",
-              description: "We couldn't get your location. Please check your browser settings.",
-              variant: "destructive",
-            });
-          }
-        }
-      );
+  const handleLocate = useCallback(async (isInitial = false) => {
+    // If it's the manual button click, force refresh
+    // Otherwise, try to use cache if available
+    const coords = await syncLocation(!isInitial);
+    
+    if (coords) {
+      setUserLocation(coords);
+      setIsLocationModalOpen(false);
+      
+      if (map) {
+        map.panTo(coords);
+        if (!isInitial) map.setZoom(14);
+      }
+    } else if (!isInitial) {
+      toast({
+        title: "Location Access Denied",
+        description: "We couldn't get your location. Please check your browser settings.",
+        variant: "destructive",
+      });
     }
-  }, [map, toast]);
+  }, [map, toast, syncLocation]);
 
   const filteredReports = useMemo(() => {
     return reports.filter(report => 
