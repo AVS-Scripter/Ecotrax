@@ -24,13 +24,23 @@ export const syncUserProfile = async (user, name) => {
       .insert([profile], { upsert: true, onConflict: 'id' })
 
     if (error) {
-      console.error('Error syncing user profile:', formatError(error))
+      const message = formatError(error)
+      if (error.code === '42501' || message.includes('row-level security')) {
+        console.warn('RLS blocked user sync; auth trigger should handle insertion:', message)
+        return null
+      }
+      console.error('Error syncing user profile:', message)
       throw error
     }
 
     return data
   } catch (error) {
-    console.error('User sync failed:', formatError(error))
+    const message = formatError(error)
+    if (error.code === '42501' || message.includes('row-level security')) {
+      console.warn('RLS blocked user sync; auth trigger should handle insertion:', message)
+      return null
+    }
+    console.error('User sync failed:', message)
     throw error
   }
 }

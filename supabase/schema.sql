@@ -208,9 +208,9 @@ ALTER TABLE global_stats ENABLE ROW LEVEL SECURITY;
 -- USERS
 CREATE POLICY "read own user" ON users FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "update own user" ON users FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "insert own user" ON users FOR INSERT WITH CHECK (auth.uid() = id);
--- Allow trigger/system functions to insert during auth sync
-CREATE POLICY "system insert user" ON users FOR INSERT WITH CHECK (auth.uid() IS NULL);
+CREATE POLICY "insert own user" ON users FOR INSERT WITH CHECK (
+  auth.uid() = id OR auth.role() = 'service_role'
+);
 
 -- COMMUNITIES
 CREATE POLICY "members read communities" ON communities FOR SELECT USING (
