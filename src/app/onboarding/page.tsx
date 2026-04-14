@@ -18,7 +18,6 @@ export default function OnboardingPage() {
   const [createName, setCreateName] = useState('');
   const [createIcon, setCreateIcon] = useState('🌍');
   const [isCreating, setIsCreating] = useState(false);
-  const [createError, setCreateError] = useState('');
 
   const [joinCode, setJoinCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
@@ -38,14 +37,12 @@ export default function OnboardingPage() {
     e.preventDefault();
     if (!user || !profile) return;
     setIsCreating(true);
-    setCreateError('');
     try {
-      const { communityId } = await createCommunity(createName, createIcon, user.uid, profile.displayName);
+      const { communityId } = await createCommunity(createName, createIcon, user.uid, profile.name);
       router.push(`/community?id=${communityId}`);
-    } catch (error: any) {
-      console.error('Create community error:', error);
-      const message = error?.message || error?.code || JSON.stringify(error) || 'Error occurred while creating community. Are you sure you are not already part of one?';
-      setCreateError(message);
+    } catch (error) {
+      console.error(error);
+      alert('Error creating community');
     } finally {
       setIsCreating(false);
     }
@@ -64,7 +61,7 @@ export default function OnboardingPage() {
         return;
       }
 
-      await useInvite(joinCode, user.uid, profile.displayName);
+      await useInvite(joinCode, user.uid, profile.name);
       router.push(`/community?id=${invite.communityId}`);
     } catch (error: any) {
       console.error(error);
@@ -84,7 +81,7 @@ export default function OnboardingPage() {
       
       <div className="w-full max-w-4xl relative animate-in fade-in zoom-in-95 duration-500 space-y-8">
         <div className="text-center space-y-2">
-            <h1 className="text-3xl font-headline font-bold">Welcome to Ecotrax, {profile?.displayName}</h1>
+            <h1 className="text-3xl font-headline font-bold">Welcome to Ecotrax, {profile?.name}</h1>
             <p className="text-muted-foreground text-sm">Join a community or start your own to begin.</p>
         </div>
 
@@ -128,7 +125,6 @@ export default function OnboardingPage() {
                 </div>
 
                 <form onSubmit={handleCreate} className="space-y-4 relative z-10">
-                    {createError && <div className="text-red-500 text-sm font-bold text-center bg-red-500/10 py-2 rounded-xl">{createError}</div>}
                     <div className="grid grid-cols-4 gap-2">
                         <div className="col-span-1 space-y-2">
                             <label className="text-xs font-bold uppercase tracking-widest ml-1">Icon</label>

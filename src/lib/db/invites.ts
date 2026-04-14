@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, doc, setDoc, getDoc, updateDoc, serverTimestamp, runTransaction, Timestamp, query, where, getDocs, orderBy, arrayUnion } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, updateDoc, serverTimestamp, runTransaction, Timestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
 
 export interface Invite {
   id?: string;
@@ -8,7 +8,6 @@ export interface Invite {
   createdBy: string;
   maxUses: number | null;
   usedCount: number;
-  isActive: boolean;
   expiresAt: any;
   createdAt: any;
 }
@@ -30,7 +29,6 @@ export async function createInvite(communityId: string, communityName: string, c
     createdBy,
     maxUses,
     usedCount: 0,
-    isActive: true,
     expiresAt: Timestamp.fromDate(expiresAt),
     createdAt: serverTimestamp()
   };
@@ -73,68 +71,49 @@ export async function validateInvite(inviteCode: string) {
 export async function useInvite(inviteCode: string, userId: string, displayName: string) {
   if (!db) throw new Error("Firebase not initialized");
 
+  const inviteRef = doc(db, INVITES_COLLECTION, inviteCode);
+  const userRef = doc(db, 'users', userId);
+
   try {
-    const result = await runTransaction(db, async (transaction) => {
-      const inviteRef = doc(db, INVITES_COLLECTION, inviteCode);
+    await runTransaction(db, async (transaction) => {
       const inviteSnap = await transaction.get(inviteRef);
-
-      if (!inviteSnap.exists()) {
-        throw new Error("Invalid invite code.");
+      if (!inviteSnap.exists()) throw new Error("Invalid invite code.");
+      
+      const invite = inviteSnap.data() as Invite;
+      
+      if (invite.expiresAt && invite.expiresAt.toDate() < new Date()) {
+        throw new Error("Invite code has expired.");
       }
-
-      const inviteData = inviteSnap.data() as Invite;
-      const communityId = inviteData.communityId;
-
-      // Validation
-      const now = new Date();
-      if (!inviteData.isActive || (inviteData.expiresAt && inviteData.expiresAt.toDate() < now)) {
-        throw new Error("Invite code has expired or is inactive.");
-      }
-
-      if (inviteData.maxUses !== null && inviteData.usedCount >= inviteData.maxUses) {
+      if (invite.maxUses !== null && invite.usedCount >= invite.maxUses) {
         throw new Error("Invite code usage limit reached.");
       }
 
-      const commRef = doc(db, 'communities', communityId);
+      const userSnap = await transaction.get(userRef);
+      if (userSnap.exists() && userSnap.data().hasJoinedCommunity) {
+        throw new Error("You are already part of a community. Leave it to join another.");
+      }
+      
+      const commRef = doc(db, 'communities', invite.communityId);
       const commSnap = await transaction.get(commRef);
-
-      if (!commSnap.exists() || commSnap.data()?.metadata?.isDeleted) {
-        throw new Error("Community no longer exists.");
+      if (!commSnap.exists() || commSnap.data().isDeleted) {
+        throw new Error("Community does not exist.");
       }
 
-      const memberRef = doc(db, 'communities', communityId, 'members', userId);
+      const memberRef = doc(db, 'communities', invite.communityId, 'members', userId);
       const memberSnap = await transaction.get(memberRef);
-
       if (memberSnap.exists()) {
         throw new Error("You are already a member of this community.");
       }
 
-      const userRef = doc(db, 'users', userId);
-
-      // Update Operations
-      transaction.update(inviteRef, { 
-        usedCount: (inviteData.usedCount || 0) + 1,
-        isActive: (inviteData.maxUses !== null && (inviteData.usedCount || 0) + 1 >= inviteData.maxUses) ? false : true
-      });
-
-      transaction.update(commRef, { 
-        'metadata.memberCount': (commSnap.data()?.metadata?.memberCount || 0) + 1 
-      });
-
-      transaction.set(memberRef, {
-        role: 'member',
-        displayName: displayName || 'Unknown Citizen',
-        joinedAt: serverTimestamp()
-      });
-
-      transaction.update(userRef, {
-        joinedCommunities: arrayUnion(communityId)
-      });
-
-      return { success: true, communityId };
+      transaction.update(inviteRef, { usedCount: invite.usedCount + 1 });
+      transaction.update(commRef, { memberCount: commSnap.data().memberCount + 1 });
+      transaction.set(memberRef, { role: 'member', displayName: displayName || 'Unknown Citizen', joinedAt: serverTimestamp() });
+      if(userSnap.exists()){
+        transaction.update(userRef, { hasJoinedCommunity: invite.communityId });
+      }
     });
 
-    return result;
+    return true;
   } catch (error) {
     console.error("Error using invite:", error);
     throw error;

@@ -1,16 +1,13 @@
 import { db } from '../firebase';
-import { collection, doc, setDoc, getDoc, updateDoc, serverTimestamp, runTransaction, Timestamp, arrayUnion, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, updateDoc, serverTimestamp, runTransaction, Timestamp } from 'firebase/firestore';
 
 export interface Community {
   id?: string;
   name: string;
   icon: string;
   createdBy: string;
-  metadata: {
-    memberCount: number;
-    isDeleted: boolean;
-    deletedAt?: any;
-  };
+  isDeleted: boolean;
+  memberCount: number;
   createdAt: any;
 }
 
@@ -29,23 +26,13 @@ export async function createCommunity(name: string, icon: string, userId: string
 
   try {
     await runTransaction(db, async (transaction) => {
-      // Validate that the user hasn't already joined a community
-      const userSnap = await transaction.get(userRef);
-      const userData = userSnap.data();
-      if (userSnap.exists() && userData?.joinedCommunities && userData.joinedCommunities.length > 0) {
-        throw new Error("You are already part of a community! Please leave your current community before creating a new one.");
-      }
-
       // Create community
       transaction.set(communityRef, {
         name,
         icon,
         createdBy: userId,
-        metadata: {
-          memberCount: 1,
-          isDeleted: false,
-          deletedAt: null
-        },
+        isDeleted: false,
+        memberCount: 1,
         createdAt: serverTimestamp(),
       });
 
@@ -56,10 +43,10 @@ export async function createCommunity(name: string, icon: string, userId: string
         joinedAt: serverTimestamp(),
       });
 
-      // Update user joinedCommunities - use set with merge to create if doesn't exist
-      transaction.set(userRef, {
-        joinedCommunities: arrayUnion(communityRef.id)
-      }, { merge: true });
+      // Update user hasJoinedCommunity
+      transaction.update(userRef, {
+        hasJoinedCommunity: communityRef.id
+      });
 
       // Create a default invite link
       const expiresAt = new Date();
@@ -69,41 +56,17 @@ export async function createCommunity(name: string, icon: string, userId: string
         communityName: name,
         createdBy: userId,
         maxUses: null, // unlimited
-        uses: 0,
-        isActive: true,
+        usedCount: 0,
         expiresAt: Timestamp.fromDate(expiresAt),
         createdAt: serverTimestamp()
       });
     });
 
     return { communityId: communityRef.id, inviteCode };
-  } catch (error: any) {
-    console.error('Error creating community:', error?.code, error?.message, error);
+  } catch (error) {
+    console.error('Error creating community:', error);
     throw error;
   }
-}
-
-export async function deleteCommunity(communityId: string, userId: string) {
-  if (!db) throw new Error("Firebase not initialized");
-  
-  const communityRef = doc(db, COMMUNITIES_COLLECTION, communityId);
-  const memberRef = doc(db, COMMUNITIES_COLLECTION, communityId, 'members', userId);
-  const memberSnap = await getDoc(memberRef);
-
-  if (!memberSnap.exists() || memberSnap.data()?.role !== 'admin') {
-    throw new Error("Only admins can delete a community.");
-  }
-
-  await updateDoc(communityRef, {
-    'metadata.isDeleted': true,
-    'metadata.deletedAt': serverTimestamp()
-  });
-
-  // Note: Full cleanup (removing from all users' arrays) cannot be done 
-  // safely from the client-side for all users due to permission restrictions.
-  // Instead, the UI should filter out deleted communities.
-  
-  return { success: true };
 }
 
 export async function getCommunity(communityId: string): Promise<Community | null> {
@@ -111,47 +74,12 @@ export async function getCommunity(communityId: string): Promise<Community | nul
   try {
     const docRef = doc(db, COMMUNITIES_COLLECTION, communityId);
     const snap = await getDoc(docRef);
-    if (snap.exists() && !snap.data().metadata?.isDeleted) {
+    if (snap.exists() && !snap.data().isDeleted) {
       return { id: snap.id, ...snap.data() } as Community;
     }
     return null;
   } catch (error) {
     console.error('Error fetching community:', error);
     return null;
-  }
-}
-
-export async function searchComunitiesByName(name: string, limitResults: number = 10): Promise<Community[]> {
-  if (!db) return [];
-  try {
-    const q = query(
-      collection(db, COMMUNITIES_COLLECTION),
-      where('metadata.isDeleted', '==', false),
-      where('name', '>=', name),
-      where('name', '<=', name + '\uf8ff'),
-      limit(limitResults)
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Community));
-  } catch (error) {
-    console.error('Error searching communities:', error);
-    return [];
-  }
-}
-
-export async function getAllCommunities(limitResults: number = 20): Promise<Community[]> {
-  if (!db) return [];
-  try {
-    const q = query(
-      collection(db, COMMUNITIES_COLLECTION),
-      where('metadata.isDeleted', '==', false),
-      orderBy('createdAt', 'desc'),
-      limit(limitResults)
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Community));
-  } catch (error) {
-    console.error('Error fetching communities:', error);
-    return [];
   }
 }

@@ -21,8 +21,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { createReport, subscribeToReports, Report } from '@/lib/db/reports';
 import { auth } from '@/lib/firebase';
 
+import { OnboardingGuard } from '@/components/providers/OnboardingGuard';
 import { useAuth } from '@/components/providers/AuthProvider';
-import Link from 'next/link';
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -32,31 +32,11 @@ const formSchema = z.object({
 });
 
 export default function ReportPage() {
-  const { user, loading, communityId, isOnboarded } = useAuth();
-
-  if (loading) {
-    return <div className="pt-24 text-center">Loading...</div>;
-  }
-
-  if (!user || !isOnboarded || !communityId) {
-    return (
-      <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto space-y-8 text-center pt-32">
-        <h1 className="text-3xl font-headline font-bold">Community Reports</h1>
-        <p className="text-muted-foreground">Sign in and join a community to view and submit environmental reports.</p>
-        {!user ? (
-            <Link href="/login">
-                <Button className="mt-4 neon-glow rounded-xl">Sign in to continue</Button>
-            </Link>
-        ) : (
-            <Link href="/onboarding">
-                <Button className="mt-4 neon-glow rounded-xl">Join a Community</Button>
-            </Link>
-        )}
-      </div>
-    );
-  }
-
-  return <ReportPageContent />;
+  return (
+    <OnboardingGuard>
+      <ReportPageContent />
+    </OnboardingGuard>
+  );
 }
 
 function ReportPageContent() {

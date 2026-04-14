@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { getCommunity, Community, deleteCommunity } from '@/lib/db/communities';
+import { getCommunity, Community } from '@/lib/db/communities';
 import { getMembers, Member, updateMemberRole } from '@/lib/db/members';
 import { getInvitesForCommunity, Invite, createInvite } from '@/lib/db/invites';
 import { Button } from '@/components/ui/button';
@@ -84,18 +84,6 @@ export default function AdminPanel() {
       alert('Invite link copied to clipboard!');
   }
 
-  const handleDeleteCommunity = async () => {
-    if (!activeId) return;
-    if (confirm("CRITICAL: Are you sure you want to delete this community? All data will be soft-deleted and cleaned up in the background. This cannot be undone.")) {
-        try {
-            await deleteCommunity(activeId, user.uid);
-            router.push('/onboarding');
-        } catch (e: any) {
-            alert(e.message);
-        }
-    }
-  }
-
   if (authLoading || loading) {
       return <div className="pt-24 text-center">Loading...</div>;
   }
@@ -163,23 +151,6 @@ export default function AdminPanel() {
                         ))
                     )}
                  </div>
-            </div>
-        </div>
-
-        <div className="pt-12 border-t border-red-500/20">
-            <div className="glass p-8 rounded-3xl border border-red-500/10 bg-red-500/5 space-y-4">
-                <h2 className="text-xl font-bold text-red-500">Danger Zone</h2>
-                <p className="text-sm text-red-400/80">
-                    Deleting the community is a permanent action (soft-delete followed by automated cleanup). 
-                    All members will be removed and reports will be archived/deleted.
-                </p>
-                <Button 
-                    variant="ghost" 
-                    onClick={handleDeleteCommunity}
-                    className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl"
-                >
-                    Delete Community
-                </Button>
             </div>
         </div>
     </div>

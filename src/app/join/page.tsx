@@ -37,7 +37,7 @@ export default function JoinPage() {
     setIsJoining(true);
     setInviteError('');
     try {
-      await useInvite(code, user.uid, profile.displayName);
+      await useInvite(code, user.uid, profile.name);
       router.push('/dashboard');
     } catch (e: any) {
       setInviteError(e.message || "Error joining");
