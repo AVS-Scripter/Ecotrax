@@ -11,9 +11,8 @@ Stores user profiles and real-time membership state.
 - **Fields**:
   - `displayName`: string
   - `email`: string
-  - `joinedCommunities`: string[]  **[Optimized]** 
+  - `joinedCommunities`: string
     - Enables O(1) membership validation in Security Rules.
-    - Allows instant "List My Communities" dashboard queries via the `in` operator.
   - `rank`: number | null
   - `points`: number
   - `createdAt`: timestamp
