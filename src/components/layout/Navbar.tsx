@@ -7,9 +7,8 @@ import { usePathname } from 'next/navigation';
 import { Leaf, Menu, X, LayoutDashboard, Map as MapIcon, Users, FileText, LogIn, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { auth } from '@/lib/firebase';
-import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
-import { UserProfileModal } from './UserProfileModal';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { signOut } from '@/lib/auth';
 
 const navItems = [
   { name: 'Home', path: '/', icon: Leaf },
@@ -23,31 +22,23 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const { user } = useAuth();
   const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
-    
-    const unsubscribe = auth ? onAuthStateChanged(auth, (user) => {
-      setUser(user);
-    }) : () => {};
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      unsubscribe();
-    };
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const handleSignOut = async () => {
-    if (!auth) return;
     try {
-      await signOut(auth);
+      await signOut();
     } catch (error) {
       console.error("Error signing out:", error);
     }
   };
+
 
   return (
     <nav 

@@ -7,9 +7,8 @@ import { useRouter } from 'next/navigation';
 import { Leaf, Mail, Lock, ArrowRight, Chrome } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, googleProvider } from '@/lib/firebase';
-import { createOrUpdateUserProfile } from '@/lib/db/users';
+import { signIn } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,49 +19,45 @@ export default function LoginPage() {
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth) {
-      alert("Firebase is not configured. Please add your keys to .env.local");
-      return;
-    }
     setLoading(true);
     setError('');
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      const { getUserProfile } = await import('@/lib/db/users');
-      const profile = await getUserProfile(cred.user.uid);
-      if (profile?.hasJoinedCommunity) {
+      await signIn(email, password);
+      
+      // Check profile via Supabase
+      const { data: profile } = await supabase
+        .from('users')
+        .select('has_joined_community')
+        .single();
+
+      if (profile?.has_joined_community) {
         router.push('/dashboard');
       } else {
         router.push('/onboarding');
       }
     } catch (err: any) {
       console.error("Error signing in:", err);
-      setError('Invalid email or password.');
+      setError(err.message || 'Invalid email or password.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
-    if (!auth || !googleProvider) {
-      alert("Google Sign-In is not configured. Please add your Firebase keys to .env.local");
-      return;
-    }
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      await createOrUpdateUserProfile(result.user);
-      const { getUserProfile } = await import('@/lib/db/users');
-      const profile = await getUserProfile(result.user.uid);
-      if (profile?.hasJoinedCommunity) {
-        router.push('/dashboard');
-      } else {
-        router.push('/onboarding');
-      }
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: `${window.location.origin}/dashboard`
+            }
+        });
+        if (error) throw error;
     } catch (error: any) {
       console.error("Error signing in with Google:", error);
-      alert(`Google Sign-In Error: ${error.message}\n\nPlease verify that Google Sign-in is explicitly ENABLED in your Firebase console under Authentication -> Sign-in methods, and that your authorized domains include your current local environment.`);
+      alert(`Google Sign-In Error: ${error.message}`);
     }
   };
+
 
   return (
     <div className="min-h-screen pt-20 flex items-center justify-center px-6 relative overflow-hidden">

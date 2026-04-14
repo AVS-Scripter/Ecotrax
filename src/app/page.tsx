@@ -11,28 +11,55 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { subscribeToGlobalStats, incrementLifetimeVisits, GlobalStats } from '@/lib/db/stats';
+import { supabase } from '@/lib/supabase';
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-eco');
-  const [stats, setStats] = useState<GlobalStats>({
-    totalReports: 0,
-    monitoredZones: 0,
-    totalUsers: 0,
-    lifetimeVisits: 0
+  const [stats, setStats] = useState<any>({
+    total_reports: 0,
+    monitored_zones: 0,
+    total_users: 0,
+    lifetime_visits: 0,
+    monthly_reports: 0
   });
 
   useEffect(() => {
-    // Increment lifetime visits on mount
-    incrementLifetimeVisits();
+    // Increment lifetime visits on mount via RPC
+    const handleVisit = async () => {
+      await supabase.rpc('increment_lifetime_visits');
+    };
+    handleVisit();
 
-    // Subscribe to stats updates
-    const unsubscribe = subscribeToGlobalStats((newStats) => {
-      setStats(newStats);
-    });
+    const fetchStats = async () => {
+      const { data } = await supabase
+        .from('stats')
+        .select('*')
+        .eq('id', 'global')
+        .maybeSingle();
+      
+      if (data) setStats(data);
+    };
 
-    return () => unsubscribe();
+    fetchStats();
+
+    // Set up real-time subscription for global stats
+    const channel = supabase
+      .channel('global-stats')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'stats',
+        filter: 'id=eq.global'
+      }, (payload) => {
+        setStats(payload.new);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
+
 
   const formatNumber = (num: number) => {
     if (num >= 1000) {
@@ -84,18 +111,19 @@ export default function Home() {
             {/* Stats Counter */}
             <div className="grid grid-cols-3 gap-8 pt-8">
               <div>
-                <div className="text-3xl font-bold font-headline">{formatNumber(stats.totalReports)}</div>
+                <div className="text-3xl font-bold font-headline">{formatNumber(stats.total_reports)}</div>
                 <div className="text-xs text-muted-foreground uppercase tracking-widest mt-1">Reports</div>
               </div>
               <div>
-                <div className="text-3xl font-bold font-headline">{formatNumber(stats.lifetimeVisits)}</div>
+                <div className="text-3xl font-bold font-headline">{formatNumber(stats.lifetime_visits)}</div>
                 <div className="text-xs text-muted-foreground uppercase tracking-widest mt-1">Visits</div>
               </div>
               <div>
-                <div className="text-3xl font-bold font-headline">{formatNumber(stats.totalUsers)}</div>
+                <div className="text-3xl font-bold font-headline">{formatNumber(stats.total_users)}</div>
                 <div className="text-xs text-muted-foreground uppercase tracking-widest mt-1">Users</div>
               </div>
             </div>
+
           </div>
 
           <div className="relative animate-in fade-in slide-in-from-right-8 duration-1000">

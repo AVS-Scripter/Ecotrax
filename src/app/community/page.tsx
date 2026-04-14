@@ -9,14 +9,36 @@ import { Users, Settings, LogOut, ShieldAlert, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import Link from 'next/link';
-import { OnboardingGuard } from '@/components/providers/OnboardingGuard';
+import { supabase } from '@/lib/supabase';
 
 export default function CommunityPageWrapper() {
+  const { user, loading, communityId, isOnboarded } = useAuth();
+
+  if (loading) {
+    return <div className="pt-24 text-center">Loading community...</div>;
+  }
+
+  if (!user || !isOnboarded || !communityId) {
+    return (
+      <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto space-y-8 text-center pt-32">
+        <h1 className="text-3xl font-headline font-bold">Community Hub</h1>
+        <p className="text-muted-foreground">Sign in and join a community to participate in discussions and events.</p>
+        {!user ? (
+            <Link href="/login">
+                <Button className="mt-4 neon-glow rounded-xl">Sign in to continue</Button>
+            </Link>
+        ) : (
+            <Link href="/onboarding">
+                <Button className="mt-4 neon-glow rounded-xl">Join a Community</Button>
+            </Link>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <OnboardingGuard>
-       <CommunityHub />
-    </OnboardingGuard>
-  )
+    <CommunityHub />
+  );
 }
 
 function CommunityHub() {
@@ -25,15 +47,13 @@ function CommunityHub() {
   const queriedId = searchParams.get('id');
   const { user, profile, communityId: userCommunityId } = useAuth();
   
-  // Use the queried ID if present, otherwise fallback to the user's community
   const activeId = queriedId || userCommunityId;
 
-  const [community, setCommunity] = useState<Community | null>(null);
-  const [members, setMembers] = useState<Member[]>([]);
+  const [community, setCommunity] = useState<any | null>(null);
+  const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Check if current user is an admin of this community
-  const currentUserMember = members.find(m => m.id === user?.uid);
+  const currentUserMember = members.find(m => m.id === user?.id || m.user_id === user?.id);
   const isAdmin = currentUserMember?.role === 'admin';
 
   useEffect(() => {
@@ -43,11 +63,25 @@ function CommunityHub() {
     }
 
     const loadData = async () => {
-      const comm = await getCommunity(activeId);
-      setCommunity(comm);
-      if (comm) {
-        const mems = await getMembers(activeId);
-        setMembers(mems);
+      // Fetch community info
+      const { data: commData, error: commError } = await supabase
+        .from('communities')
+        .select('*')
+        .eq('id', activeId)
+        .maybeSingle();
+
+      if (!commError && commData) {
+        setCommunity(commData);
+        
+        // Fetch members (Note: assuming a 'members' table or RPC helper)
+        const { data: memsData, error: memsError } = await supabase
+          .from('community_members') // Assuming this table name in Supabase
+          .select('*')
+          .eq('community_id', activeId);
+          
+        if (!memsError && memsData) {
+          setMembers(memsData);
+        }
       }
       setLoading(false);
     };
@@ -59,7 +93,10 @@ function CommunityHub() {
     if (!activeId || !user) return;
     if (confirm("Are you sure you want to leave this community?")) {
         try {
-            await leaveCommunity(activeId, user.uid);
+            const { error } = await supabase.rpc('leave_community', {
+                p_community_id: activeId
+            });
+            if (error) throw error;
             router.push('/onboarding');
         } catch(e: any) {
             alert(e.message);
@@ -81,6 +118,7 @@ function CommunityHub() {
     );
   }
 
+
   return (
     <div className="pt-24 pb-12 px-6 max-w-7xl mx-auto space-y-12">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -90,7 +128,7 @@ function CommunityHub() {
           </div>
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest mb-1">
-              <Users className="w-4 h-4" /> {community.memberCount} Members
+              <Users className="w-4 h-4" /> {community.member_count || 0} Members
             </div>
             <h1 className="text-4xl md:text-5xl font-headline font-bold tracking-tight">{community.name}</h1>
           </div>
@@ -137,7 +175,7 @@ function CommunityHub() {
                             </Avatar>
                             <div>
                                 <div className="text-sm font-bold flex items-center gap-2">
-                                    {member.displayName}
+                                    {member.display_name}
                                     {member.role === 'admin' && <ShieldAlert className="w-3 h-3 text-red-400" />}
                                     {member.role === 'moderator' && <Star className="w-3 h-3 text-yellow-400" />}
                                 </div>

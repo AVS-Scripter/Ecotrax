@@ -13,41 +13,74 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { subscribeToGlobalStats, GlobalStats } from '@/lib/db/stats';
-import { subscribeToReports, Report } from '@/lib/db/reports';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/providers/AuthProvider';
+
 
 const COLORS = ['#00FF9F', '#0e915eff', '#67ffd4ff', '#77ac94d3'];
 
 export default function Dashboard() {
   const { user, loading, communityId, isOnboarded } = useAuth();
   
-  const [stats, setStats] = useState<GlobalStats>({
-    totalReports: 0,
-    monitoredZones: 0,
-    totalUsers: 0,
-    lifetimeVisits: 0,
-    monthlyReports: { Jan: 0 } 
+  const [stats, setStats] = useState<any>({
+    total_reports: 0,
+    monitored_zones: 0,
+    total_users: 0,
+    lifetime_visits: 0,
+    monthly_reports: {} 
   });
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const lineData = months.map(m => ({ 
     name: m, 
-    reports: stats.monthlyReports ? (stats.monthlyReports[m] || 0) : 0 
+    reports: stats.monthly_reports ? (stats.monthly_reports[m] || 0) : 0 
   }));
-  const [reports, setReports] = useState<Report[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
 
   useEffect(() => {
     if(!communityId) return;
     
-    const unsubStats = subscribeToGlobalStats(setStats);
-    const unsubReports = subscribeToReports(communityId, (data) => setReports(data.slice(0, 4)));
+    const fetchDashboardData = async () => {
+        // Fetch stats (simplified from a 'stats' table)
+        const { data: statsData } = await supabase
+            .from('stats')
+            .select('*')
+            .eq('id', 'global')
+            .maybeSingle();
+            
+        if (statsData) setStats(statsData);
+
+        // Fetch recent reports
+        const { data: reportsData } = await supabase
+            .from('reports')
+            .select('*')
+            .eq('community_id', communityId)
+            .order('created_at', { ascending: false })
+            .limit(4);
+            
+        if (reportsData) setReports(reportsData);
+    };
+
+    fetchDashboardData();
+
+    // Set up real-time subscription for reports
+    const channel = supabase
+      .channel('dashboard-changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'reports',
+        filter: `community_id=eq.${communityId}`
+      }, () => {
+        fetchDashboardData();
+      })
+      .subscribe();
 
     return () => {
-      unsubStats();
-      unsubReports();
+      supabase.removeChannel(channel);
     };
   }, [communityId]);
+
 
   if (loading) {
     return <div className="pt-24 text-center">Loading...</div>;

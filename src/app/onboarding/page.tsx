@@ -6,10 +6,10 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Users, Plus, Link as LinkIcon, LogOut } from 'lucide-react';
-import { createCommunity } from '@/lib/db/communities';
-import { validateInvite, useInvite } from '@/lib/db/invites';
-import { auth } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
+import { createCommunity, joinCommunity } from '@/lib/community';
+import { signOut } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
+
 
 export default function OnboardingPage() {
   const { user, profile, isOnboarded, loading } = useAuth();
@@ -38,8 +38,8 @@ export default function OnboardingPage() {
     if (!user || !profile) return;
     setIsCreating(true);
     try {
-      const { communityId } = await createCommunity(createName, createIcon, user.uid, profile.name);
-      router.push(`/community?id=${communityId}`);
+      const community = await createCommunity(createName, createIcon);
+      router.push(`/community?id=${community.id}`);
     } catch (error) {
       console.error(error);
       alert('Error creating community');
@@ -54,15 +54,10 @@ export default function OnboardingPage() {
     setIsJoining(true);
     setJoinError('');
     try {
-      const { valid, error, invite } = await validateInvite(joinCode);
-      if (!valid || !invite) {
-        setJoinError(error || "Invalid invite");
-        setIsJoining(false);
-        return;
-      }
-
-      await useInvite(joinCode, user.uid, profile.name);
-      router.push(`/community?id=${invite.communityId}`);
+      const data = await joinCommunity(joinCode);
+      // data might be the communityId or community object depending on RPC implementation
+      const communityId = typeof data === 'string' ? data : data.community_id;
+      router.push(`/community?id=${communityId}`);
     } catch (error: any) {
       console.error(error);
       setJoinError(error.message || 'Error joining community');
@@ -72,8 +67,9 @@ export default function OnboardingPage() {
   };
 
   const handleLogout = () => {
-    signOut(auth);
+    signOut();
   }
+
 
   return (
     <div className="min-h-screen pt-24 flex items-center justify-center px-6 relative overflow-hidden">

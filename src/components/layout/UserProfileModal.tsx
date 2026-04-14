@@ -1,7 +1,4 @@
-import React, { useState } from 'react';
-import { User as FirebaseUser, updateProfile, updateEmail, updatePassword, deleteUser } from 'firebase/auth';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -10,48 +7,58 @@ import { User, Mail, Lock, AlertTriangle, X } from 'lucide-react';
 interface UserProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
-  user: FirebaseUser;
+  user: any;
 }
+
 
 export function UserProfileModal({ isOpen, onClose, user }: UserProfileModalProps) {
   const { toast } = useToast();
   const [name, setName] = useState(user.displayName || '');
   const [email, setEmail] = useState(user.email || '');
+
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
-
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const userRef = doc(db, 'users', user.uid);
-
       // Update Name Process
       if (name !== user.displayName) {
-        await updateProfile(user, { displayName: name });
-        try {
-          await updateDoc(userRef, { name });
-        } catch(e) {
-          console.warn("DB update skipped", e);
-        }
+        const { error } = await supabase.auth.updateUser({
+          data: { full_name: name }
+        });
+        if (error) throw error;
+
+        // Update in users table
+        await supabase
+          .from('users')
+          .update({ name })
+          .eq('id', user.id);
       }
 
       // Update Email Process
       if (email !== user.email && email.length > 0) {
-        await updateEmail(user, email);
-        try {
-          await updateDoc(userRef, { email });
-        } catch(e) {
-          console.warn("DB update skipped", e);
-        }
+        const { error } = await supabase.auth.updateUser({ email });
+        if (error) throw error;
+        
+        await supabase
+          .from('users')
+          .update({ email })
+          .eq('id', user.id);
+          
+        toast({
+          title: "Confirmation Required",
+          description: "Please check both your old and new email addresses to confirm the change."
+        });
       }
 
       // Update Password Process
       if (password.length >= 6) {
-        await updatePassword(user, password);
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
       } else if (password.length > 0 && password.length < 6) {
         throw new Error("Password must be at least 6 characters.");
       }
@@ -63,19 +70,11 @@ export function UserProfileModal({ isOpen, onClose, user }: UserProfileModalProp
       onClose();
     } catch (error: any) {
       console.error(error);
-      if (error.code === 'auth/requires-recent-login') {
-        toast({
-          title: "Security Verification Required",
-          description: "Please log out and log back in before making sensitive changes.",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Update Failed",
-          description: error.message || "An error occurred.",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: "Update Failed",
+        description: error.message || "An error occurred.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -84,33 +83,30 @@ export function UserProfileModal({ isOpen, onClose, user }: UserProfileModalProp
   const handleDeleteAccount = async () => {
     if (window.confirm("Are you absolutely sure you want to delete your account? This action cannot be undone!")) {
       try {
-        const userRef = doc(db, 'users', user.uid);
-        try {
-          await deleteDoc(userRef);
-        } catch(e) {}
-        await deleteUser(user);
+        // In Supabase client SDK, there's no direct deleteUser for the current user 
+        // without an admin key usually, or by using a specific RPC/Function.
+        // However, we can use an RPC if defined or just notify the user.
+        // For now, we'll call a hypothetical delete_own_account RPC or just error if not available.
+        const { error } = await supabase.rpc('delete_own_account');
+        if (error) throw error;
+        
+        await supabase.auth.signOut();
+        
         toast({
           title: "Account Deleted",
           description: "We're sorry to see you go. Thanks for trying Ecotrax."
         });
         onClose();
       } catch (error: any) {
-        if (error.code === 'auth/requires-recent-login') {
-          toast({
-            title: "Security Verification Required",
-            description: "Please log out and log back in to permanently delete your account.",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Action Failed",
-            description: error.message,
-            variant: "destructive"
-          });
-        }
+        toast({
+          title: "Action Failed",
+          description: error.message || "Deletion requires admin privileges or a specific backend function.",
+          variant: "destructive"
+        });
       }
     }
   };
+
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 sm:p-6" onClick={onClose}>

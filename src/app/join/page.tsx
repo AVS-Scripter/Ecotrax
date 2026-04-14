@@ -3,7 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { validateInvite, useInvite } from '@/lib/db/invites';
+import { joinCommunity } from '@/lib/community';
+import { supabase } from '@/lib/supabase';
+
 import { Button } from '@/components/ui/button';
 
 export default function JoinPage() {
@@ -22,13 +24,21 @@ export default function JoinPage() {
       return;
     }
 
-    validateInvite(code).then((result) => {
-      if (result.valid && result.invite) {
-        setInviteCommunity(result.invite.communityName);
-      } else {
-        setInviteError(result.error || "Invalid invite link");
-      }
-    });
+    const checkInvite = async () => {
+        const { data, error } = await supabase
+            .from('invites')
+            .select('community_name')
+            .eq('id', code)
+            .single();
+            
+        if (error || !data) {
+            setInviteError("Invalid invite link");
+        } else {
+            setInviteCommunity(data.community_name);
+        }
+    };
+    
+    checkInvite();
 
   }, [code]);
 
@@ -37,7 +47,7 @@ export default function JoinPage() {
     setIsJoining(true);
     setInviteError('');
     try {
-      await useInvite(code, user.uid, profile.name);
+      await joinCommunity(code);
       router.push('/dashboard');
     } catch (e: any) {
       setInviteError(e.message || "Error joining");
@@ -45,6 +55,7 @@ export default function JoinPage() {
       setIsJoining(false);
     }
   };
+
 
   const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
 
@@ -83,7 +94,7 @@ export default function JoinPage() {
                        Log In
                      </Button>
                    </div>
-                ) : profile?.hasJoinedCommunity ? (
+                ) : profile?.has_joined_community ? (
                     <div className="text-yellow-500 bg-yellow-500/10 p-4 rounded-xl text-sm">
                         You are already part of a community. You must leave your current community before joining a new one.
                     </div>

@@ -2,12 +2,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
   Upload, MapPin, Loader2, Leaf, 
-  Wind, Droplets, Trash2, Volume2 
+  Wind, Droplets, Trash2, Volume2, Navigation 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,24 +19,45 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { createReport, subscribeToReports, Report } from '@/lib/db/reports';
-import { auth } from '@/lib/firebase';
-
-import { OnboardingGuard } from '@/components/providers/OnboardingGuard';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { supabase } from '@/lib/supabase';
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   issueType: z.string({ required_error: "Please select an issue type" }),
   description: z.string().min(10, "Description must be at least 10 characters"),
   location: z.string().min(3, "Please provide a valid location"),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 export default function ReportPage() {
+  const { user, loading, communityId, isOnboarded } = useAuth();
+
+  if (loading) {
+    return <div className="pt-24 text-center">Loading...</div>;
+  }
+
+  if (!user || !isOnboarded || !communityId) {
+    return (
+      <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto space-y-8 text-center pt-32">
+        <h1 className="text-3xl font-headline font-bold">Environmental Reports</h1>
+        <p className="text-muted-foreground">Sign in and join a community to report and track environmental issues.</p>
+        {!user ? (
+            <Link href="/login">
+                <Button className="mt-4 neon-glow rounded-xl">Sign in to continue</Button>
+            </Link>
+        ) : (
+            <Link href="/onboarding">
+                <Button className="mt-4 neon-glow rounded-xl">Join a Community</Button>
+            </Link>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <OnboardingGuard>
-      <ReportPageContent />
-    </OnboardingGuard>
+    <ReportPageContent />
   );
 }
 
@@ -46,15 +68,47 @@ function ReportPageContent() {
   const [preview, setPreview] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'in-progress' | 'completed' | 'incomplete'>('all');
-  const [reports, setReports] = useState<Report[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
 
   useEffect(() => {
     if(!communityId) return;
-    const unsubscribe = subscribeToReports(communityId, (data) => {
-      setReports(data);
-    }, selectedFilter);
+    
+    // Using a simplified fetch for now as subscribeToReports was Firebase-based
+    const fetchReports = async () => {
+      let query = supabase
+        .from('reports')
+        .select('*')
+        .eq('community_id', communityId)
+        .order('created_at', { ascending: false });
 
-    return () => unsubscribe();
+      if (selectedFilter !== 'all') {
+        query = query.eq('status', selectedFilter);
+      }
+
+      const { data, error } = await query;
+      if (!error && data) {
+        setReports(data);
+      }
+    };
+
+    fetchReports();
+    
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('reports-changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'reports',
+        filter: `community_id=eq.${communityId}`
+      }, () => {
+        fetchReports();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [selectedFilter, communityId]);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -65,6 +119,28 @@ function ReportPageContent() {
       description: "",
     },
   });
+
+  const handlePinLocation = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          form.setValue('latitude', position.coords.latitude);
+          form.setValue('longitude', position.coords.longitude);
+          toast({
+            title: "Location pinned",
+            description: `Coordinates: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`,
+          });
+        },
+        (error) => {
+          toast({
+            title: "Location error",
+            description: "Please enable location services and try again.",
+            variant: "destructive",
+          });
+        }
+      );
+    }
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -80,20 +156,26 @@ function ReportPageContent() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      await createReport({
-        communityId: communityId || "",
-        userId: auth?.currentUser?.uid,
-        name: values.name,
-        issueType: values.issueType,
-        description: values.description,
-        location: values.location,
-        image: preview,
-        status: 'unresolved',
-      });
+      const { error } = await supabase
+        .from('reports')
+        .insert([{
+          community_id: communityId,
+          user_id: user.id,
+          name: values.name,
+          issue_type: values.issueType,
+          description: values.description,
+          location: values.location,
+          latitude: values.latitude,
+          longitude: values.longitude,
+          image_url: preview, // Note: image_url instead of image for Supabase schema
+          status: 'unresolved',
+        }]);
+
+      if (error) throw error;
 
       toast({
         title: 'Incident Reported',
-        description: 'Your report has been submitted to the database. Thank you for your contribution!',
+        description: 'Your report has been submitted. Thank you for your contribution!',
       });
       
       form.reset();
@@ -102,13 +184,14 @@ function ReportPageContent() {
     } catch (error) {
       toast({
         title: 'Submission Failed',
-        description: 'There was an error saving your report. Please try again.',
+        description: error.message || 'There was an error saving your report.',
         variant: 'destructive',
       });
     } finally {
       setIsSubmitting(false);
     }
   }
+
 
   const statusClass = (status: string) => {
     if (status === 'completed') return 'bg-emerald-500/30 text-emerald-200';
@@ -156,7 +239,7 @@ function ReportPageContent() {
                   {report.status}
                 </span>
               </div>
-              <div className="text-xs uppercase tracking-widest text-primary font-bold mb-2">#{report.issueType}</div>
+              <div className="text-xs uppercase tracking-widest text-primary font-bold mb-2">#{report.issue_type}</div>
               <p className="text-sm text-muted-foreground line-clamp-3 mb-4 flex-1">{report.description}</p>
               
               <div className="flex items-center gap-2 mb-4 text-xs text-muted-foreground">
@@ -164,14 +247,14 @@ function ReportPageContent() {
                 <span className="truncate">{report.location || 'Unknown Location'}</span>
               </div>
 
-              {report.image && (
+              {report.image_url && (
                 <div className="mb-4 rounded-xl overflow-hidden border border-white/10 aspect-video">
-                  <img src={report.image} alt={`Report ${report.id}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                  <img src={report.image_url} alt={`Report ${report.id}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                 </div>
               )}
               
               <div className="pt-4 border-t border-white/5 flex items-center justify-between text-[10px] text-muted-foreground uppercase tracking-widest">
-                <span>{report.createdAt ? new Date(report.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}</span>
+                <span>{report.created_at ? new Date(report.created_at).toLocaleDateString() : 'Just now'}</span>
                 <span>Ref: {report.id?.slice(0, 8)}</span>
               </div>
             </article>
@@ -236,10 +319,27 @@ function ReportPageContent() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Location</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter address or landmark" className="bg-white/5 border-white/10 rounded-xl py-3" {...field} />
-                      </FormControl>
+                      <div className="flex gap-2">
+                        <FormControl>
+                          <Input placeholder="Enter address or landmark" className="bg-white/5 border-white/10 rounded-xl py-3 flex-1" {...field} />
+                        </FormControl>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="icon" 
+                          className="shrink-0 rounded-xl border-white/10"
+                          onClick={handlePinLocation}
+                          title="Pin current location"
+                        >
+                          <Navigation className="w-4 h-4 text-primary" />
+                        </Button>
+                      </div>
                       <FormMessage />
+                      {form.watch('latitude') && (
+                        <p className="text-[10px] text-primary/70 mt-1 font-mono">
+                          📍 Coordinates captured: {form.watch('latitude')?.toFixed(4)}, {form.watch('longitude')?.toFixed(4)}
+                        </p>
+                      )}
                     </FormItem>
                   )}
                 />
