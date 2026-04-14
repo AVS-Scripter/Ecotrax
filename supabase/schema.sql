@@ -135,7 +135,7 @@ CREATE OR REPLACE FUNCTION join_via_invite(
     p_user_id UUID,
     p_display_name TEXT
 )
-RETURNS VOID AS $$
+RETURNS UUID AS $$
 DECLARE
     invite_record RECORD;
 BEGIN
@@ -164,6 +164,8 @@ BEGIN
 
     INSERT INTO memberships (user_id, community_id, display_name)
     VALUES (p_user_id, invite_record.community_id, p_display_name);
+
+    RETURN invite_record.community_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

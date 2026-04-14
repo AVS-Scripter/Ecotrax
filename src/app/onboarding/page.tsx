@@ -38,11 +38,12 @@ export default function OnboardingPage() {
     if (!user || !profile) return;
     setIsCreating(true);
     try {
-      const community = await createCommunity(createName, createIcon);
-      router.push(`/community?id=${community.id}`);
-    } catch (error) {
+      const displayName = profile.name || user.displayName || user.email?.split('@')[0] || 'Citizen'
+      const community = await createCommunity(createName.trim(), createIcon.trim() || '🌍', user.id, displayName);
+      router.push(`/community?id=${community.communityId}`);
+    } catch (error: any) {
       console.error(error);
-      alert('Error creating community');
+      alert(error.message || 'Error creating community');
     } finally {
       setIsCreating(false);
     }
@@ -54,9 +55,11 @@ export default function OnboardingPage() {
     setIsJoining(true);
     setJoinError('');
     try {
-      const data = await joinCommunity(joinCode);
-      // data might be the communityId or community object depending on RPC implementation
-      const communityId = typeof data === 'string' ? data : data.community_id;
+      const displayName = profile.name || user.displayName || user.email?.split('@')[0] || 'Citizen'
+      const communityId = await joinCommunity(joinCode.trim(), user.id, displayName);
+      if (!communityId) {
+        throw new Error('Unable to determine joined community ID.');
+      }
       router.push(`/community?id=${communityId}`);
     } catch (error: any) {
       console.error(error);

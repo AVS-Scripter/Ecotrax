@@ -7,11 +7,13 @@ import Image from 'next/image';
 import { 
   ArrowRight, Leaf, Shield, Map as MapIcon, Globe, 
   BarChart3, AlertTriangle, Sun, Thermometer, 
-  Droplets, CloudRain, Wind 
+  Droplets, CloudRain, Wind, Loader2 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { supabase } from '@/lib/supabase';
+import { LocationPermissionDialog } from '@/components/map/LocationPermissionDialog';
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-eco');
@@ -22,6 +24,10 @@ export default function Home() {
     lifetime_visits: 0,
     monthly_reports: 0
   });
+
+  const [weather, setWeather] = useState<any>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   useEffect(() => {
     // Increment lifetime visits on mount via RPC
@@ -60,6 +66,51 @@ export default function Home() {
     };
   }, []);
 
+  const fetchWeather = async (lat: number, lng: number) => {
+    setIsSyncing(true);
+    try {
+      const [weatherRes, aqiRes, geoRes] = await Promise.all([
+        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code&hourly=precipitation_probability`),
+        fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=european_aqi`),
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+      ]);
+
+      const weatherData = await weatherRes.json();
+      const aqiData = await aqiRes.json();
+      const geoData = await geoRes.json();
+
+      const city = geoData.address.city || geoData.address.town || geoData.address.village || geoData.address.suburb || "Current Area";
+
+      setWeather({
+        city,
+        temp: Math.round(weatherData.current.temperature_2m),
+        humidity: weatherData.current.relative_humidity_2m,
+        precipitation: weatherData.current.precipitation,
+        rainChance: weatherData.hourly.precipitation_probability[0],
+        aqi: Math.round(aqiData.current.european_aqi),
+        condition: weatherData.current.weather_code
+      });
+      
+    } catch (error) {
+      console.error("Weather fetch failed:", error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleLocateAndSync = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          fetchWeather(position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          alert("Could not get location. Please check your browser settings.");
+        }
+      );
+    }
+  };
 
   const formatNumber = (num: number) => {
     if (num >= 1000) {
@@ -129,7 +180,6 @@ export default function Home() {
           <div className="relative animate-in fade-in slide-in-from-right-8 duration-1000">
             <div className="absolute inset-0 bg-primary/20 blur-[60px] rounded-full" />
             <div className="relative h-full w-full glass rounded-3xl border border-white/10 shadow-2xl flex flex-col p-6 md:p-8 overflow-hidden min-h-[480px]">
-              {/* Background gradient effect inside the card to simulate atmosphere */}
               <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
               
               <div className="relative z-10 flex flex-col h-full">
@@ -137,18 +187,24 @@ export default function Home() {
                 <div className="flex items-start justify-between pb-6 border-b border-white/10 mb-6">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 shadow-inner">
-                      {/* Loading spinner or weather icon placeholder */}
-                      <Sun className="w-7 h-7 text-muted-foreground/50" suppressHydrationWarning />
+                      {isSyncing ? (
+                        <Loader2 className="w-7 h-7 text-primary animate-spin" />
+                      ) : (
+                        <Sun className={cn("w-7 h-7", weather ? "text-primary" : "text-muted-foreground/50")} suppressHydrationWarning />
+                      )}
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold font-headline">nill</h3>
-                      <p className="text-sm text-muted-foreground">Awaiting Location</p>
+                      <h3 className="text-xl font-bold font-headline">{weather?.city || "nill"}</h3>
+                      <p className="text-sm text-muted-foreground">{weather ? "Local Conditions" : "Awaiting Location"}</p>
                     </div>
                   </div>
                   
                   <div className="text-right flex flex-col items-end">
-                    <div className="flex items-center gap-2 text-4xl md:text-5xl font-bold font-headline text-muted-foreground/80 tracking-tighter">
-                      <Thermometer className="w-8 h-8 opacity-50" suppressHydrationWarning /> nill°
+                    <div className={cn(
+                      "flex items-center gap-2 text-4xl md:text-5xl font-bold font-headline tracking-tighter transition-colors",
+                      weather ? "text-foreground" : "text-muted-foreground/80"
+                    )}>
+                      <Thermometer className="w-8 h-8 opacity-50" suppressHydrationWarning /> {weather ? `${weather.temp}°` : "nill°"}
                     </div>
                     <div className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mt-1">Temperature</div>
                   </div>
@@ -163,7 +219,7 @@ export default function Home() {
                          <BarChart3 className="w-5 h-5 text-blue-400" />
                        </div>
                        <div>
-                         <div className="text-lg font-bold text-muted-foreground">nill</div>
+                         <div className="text-lg font-bold transition-colors">{weather?.aqi || "nill"}</div>
                          <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">AQI Level</div>
                        </div>
                     </div>
@@ -176,7 +232,7 @@ export default function Home() {
                          <Droplets className="w-5 h-5 text-teal-400" />
                        </div>
                        <div>
-                         <div className="text-lg font-bold text-muted-foreground">nill</div>
+                         <div className="text-lg font-bold transition-colors">{weather ? `${weather.humidity}%` : "nill"}</div>
                          <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Humidity</div>
                        </div>
                     </div>
@@ -189,7 +245,7 @@ export default function Home() {
                          <CloudRain className="w-5 h-5 text-indigo-400" />
                        </div>
                        <div>
-                         <div className="text-lg font-bold text-muted-foreground">nill</div>
+                         <div className="text-lg font-bold transition-colors">{weather ? `${weather.rainChance}%` : "nill"}</div>
                          <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Rain Chance</div>
                        </div>
                     </div>
@@ -202,7 +258,7 @@ export default function Home() {
                          <Wind className="w-5 h-5 text-emerald-400" />
                        </div>
                        <div>
-                         <div className="text-lg font-bold text-muted-foreground">nill</div>
+                         <div className="text-lg font-bold transition-colors">{weather ? `${weather.precipitation}mm` : "nill"}</div>
                          <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Precipitation</div>
                        </div>
                     </div>
@@ -212,11 +268,23 @@ export default function Home() {
                 {/* API Initializer Button */}
                 <div className="mt-6 pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                    <p className="text-[11px] md:text-xs text-muted-foreground max-w-[240px] leading-relaxed">
-                     Enable location access to populate dashboard with Live Meteorological Data.
+                     {weather ? "Live meteorological data synced from global monitoring stations." : "Enable location access to populate dashboard with Live Meteorological Data."}
                    </p>
-                   <Button variant="outline" className="rounded-full shrink-0 text-xs font-bold uppercase tracking-wider h-10 bg-primary/10 text-primary hover:bg-primary hover:text-black border-primary/20 transition-all">
-                     <MapIcon className="w-4 h-4 mr-2" />
-                     Enable Sync
+                   <Button 
+                    variant="outline" 
+                    className={cn(
+                      "rounded-full shrink-0 text-xs font-bold uppercase tracking-wider h-10 transition-all",
+                      weather ? "bg-primary/5 text-primary border-primary/20" : "bg-primary text-black border-transparent hover:scale-105"
+                    )}
+                    disabled={isSyncing}
+                    onClick={() => setIsLocationModalOpen(true)}
+                  >
+                     {isSyncing ? (
+                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                     ) : (
+                       <MapIcon className="w-4 h-4 mr-2" />
+                     )}
+                     {weather ? "Sync Again" : "Enable Sync"}
                    </Button>
                 </div>
               </div>
@@ -263,6 +331,13 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      <LocationPermissionDialog 
+        isOpen={isLocationModalOpen}
+        onOpenChange={setIsLocationModalOpen}
+        onAccept={handleLocateAndSync}
+        onDecline={() => setIsLocationModalOpen(false)}
+      />
     </div>
   );
 }
