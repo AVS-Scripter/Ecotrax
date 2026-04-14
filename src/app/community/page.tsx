@@ -78,7 +78,7 @@ function CommunityHub() {
     if (!activeId || !user) return;
     if (confirm("Are you sure you want to leave this community?")) {
         try {
-            await leaveCommunity(activeId, user.uid);
+            await leaveCommunity(activeId);
             router.push('/onboarding');
         } catch(e: any) {
             alert(e.message);
@@ -109,7 +109,7 @@ function CommunityHub() {
           </div>
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest mb-1">
-              <Users className="w-4 h-4" /> {community.memberCount} Members
+              <Users className="w-4 h-4" /> {community.metadata.memberCount} Members
             </div>
             <h1 className="text-4xl md:text-5xl font-headline font-bold tracking-tight">{community.name}</h1>
           </div>

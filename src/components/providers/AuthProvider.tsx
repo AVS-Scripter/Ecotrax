@@ -10,7 +10,7 @@ interface UserProfile {
   email: string;
   rank: number | null;
   points: number;
-  hasJoinedCommunity: string;
+  joinedCommunities: string[];
   createdAt: any;
 }
 
@@ -67,8 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribeAuth();
   }, []);
 
-  const isOnboarded = !!(profile && profile.hasJoinedCommunity && profile.hasJoinedCommunity !== "");
-  const communityId = profile?.hasJoinedCommunity || null;
+  const isOnboarded = !!(profile && profile.joinedCommunities && profile.joinedCommunities.length > 0);
+  const communityId = (profile?.joinedCommunities && profile.joinedCommunities.length > 0) ? profile.joinedCommunities[0] : null;
 
   return (
     <AuthContext.Provider value={{ user, profile, loading, isOnboarded, communityId }}>

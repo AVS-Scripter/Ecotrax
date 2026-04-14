@@ -68,52 +68,16 @@ export async function validateInvite(inviteCode: string) {
   }
 }
 
-export async function useInvite(inviteCode: string, userId: string, displayName: string) {
-  if (!db) throw new Error("Firebase not initialized");
+import { fbFunctions } from '../firebase';
+import { httpsCallable } from 'firebase/functions';
 
-  const inviteRef = doc(db, INVITES_COLLECTION, inviteCode);
-  const userRef = doc(db, 'users', userId);
+export async function useInvite(inviteCode: string) {
+  if (!fbFunctions) throw new Error("Firebase functions not initialized");
 
   try {
-    await runTransaction(db, async (transaction) => {
-      const inviteSnap = await transaction.get(inviteRef);
-      if (!inviteSnap.exists()) throw new Error("Invalid invite code.");
-      
-      const invite = inviteSnap.data() as Invite;
-      
-      if (invite.expiresAt && invite.expiresAt.toDate() < new Date()) {
-        throw new Error("Invite code has expired.");
-      }
-      if (invite.maxUses !== null && invite.usedCount >= invite.maxUses) {
-        throw new Error("Invite code usage limit reached.");
-      }
-
-      const userSnap = await transaction.get(userRef);
-      if (userSnap.exists() && userSnap.data().hasJoinedCommunity) {
-        throw new Error("You are already part of a community. Leave it to join another.");
-      }
-      
-      const commRef = doc(db, 'communities', invite.communityId);
-      const commSnap = await transaction.get(commRef);
-      if (!commSnap.exists() || commSnap.data().isDeleted) {
-        throw new Error("Community does not exist.");
-      }
-
-      const memberRef = doc(db, 'communities', invite.communityId, 'members', userId);
-      const memberSnap = await transaction.get(memberRef);
-      if (memberSnap.exists()) {
-        throw new Error("You are already a member of this community.");
-      }
-
-      transaction.update(inviteRef, { usedCount: invite.usedCount + 1 });
-      transaction.update(commRef, { memberCount: commSnap.data().memberCount + 1 });
-      transaction.set(memberRef, { role: 'member', displayName: displayName || 'Unknown Citizen', joinedAt: serverTimestamp() });
-      if(userSnap.exists()){
-        transaction.update(userRef, { hasJoinedCommunity: invite.communityId });
-      }
-    });
-
-    return true;
+    const joinFn = httpsCallable(fbFunctions, 'joinCommunity');
+    const result = await joinFn({ inviteCode });
+    return result.data;
   } catch (error) {
     console.error("Error using invite:", error);
     throw error;

@@ -1,13 +1,16 @@
 import { db } from '../firebase';
-import { collection, doc, setDoc, getDoc, updateDoc, serverTimestamp, runTransaction, Timestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, updateDoc, serverTimestamp, runTransaction, Timestamp, arrayUnion } from 'firebase/firestore';
 
 export interface Community {
   id?: string;
   name: string;
   icon: string;
   createdBy: string;
-  isDeleted: boolean;
-  memberCount: number;
+  metadata: {
+    memberCount: number;
+    isDeleted: boolean;
+    deletedAt?: any;
+  };
   createdAt: any;
 }
 
@@ -37,8 +40,11 @@ export async function createCommunity(name: string, icon: string, userId: string
         name,
         icon,
         createdBy: userId,
-        isDeleted: false,
-        memberCount: 1,
+        metadata: {
+          memberCount: 1,
+          isDeleted: false,
+          deletedAt: null
+        },
         createdAt: serverTimestamp(),
       });
 
@@ -49,9 +55,9 @@ export async function createCommunity(name: string, icon: string, userId: string
         joinedAt: serverTimestamp(),
       });
 
-      // Update user hasJoinedCommunity
+      // Update user joinedCommunities
       transaction.update(userRef, {
-        hasJoinedCommunity: communityRef.id
+        joinedCommunities: arrayUnion(communityRef.id)
       });
 
       // Create a default invite link
@@ -62,7 +68,8 @@ export async function createCommunity(name: string, icon: string, userId: string
         communityName: name,
         createdBy: userId,
         maxUses: null, // unlimited
-        usedCount: 0,
+        uses: 0,
+        isActive: true,
         expiresAt: Timestamp.fromDate(expiresAt),
         createdAt: serverTimestamp()
       });
@@ -75,12 +82,21 @@ export async function createCommunity(name: string, icon: string, userId: string
   }
 }
 
+import { fbFunctions } from '../firebase';
+import { httpsCallable } from 'firebase/functions';
+
+export async function deleteCommunity(communityId: string) {
+  if (!fbFunctions) throw new Error("Firebase functions not initialized");
+  const deleteFn = httpsCallable(fbFunctions, 'deleteCommunity');
+  await deleteFn({ communityId });
+}
+
 export async function getCommunity(communityId: string): Promise<Community | null> {
   if (!db) return null;
   try {
     const docRef = doc(db, COMMUNITIES_COLLECTION, communityId);
     const snap = await getDoc(docRef);
-    if (snap.exists() && !snap.data().isDeleted) {
+    if (snap.exists() && !snap.data().metadata?.isDeleted) {
       return { id: snap.id, ...snap.data() } as Community;
     }
     return null;

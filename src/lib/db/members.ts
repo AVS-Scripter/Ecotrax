@@ -61,38 +61,16 @@ export async function updateMemberRole(communityId: string, targetUserId: string
   }
 }
 
-export async function leaveCommunity(communityId: string, userId: string) {
-  if(!db) throw new Error("Firebase uninitialized");
+import { fbFunctions } from '../firebase';
+import { httpsCallable } from 'firebase/functions';
+
+export async function leaveCommunity(communityId: string) {
+  if (!fbFunctions) throw new Error("Firebase functions not initialized");
   
   try {
-    await runTransaction(db, async (t) => {
-      const memberRef = doc(db, 'communities', communityId, 'members', userId);
-      const memberSnap = await t.get(memberRef);
-      
-      if (!memberSnap.exists()) {
-          throw new Error("Not a member");
-      }
-
-      if (memberSnap.data().role === 'admin') {
-        const q = query(collection(db, 'communities', communityId, 'members'));
-        const membersSnap = await getDocs(q);
-        const otherAdmins = membersSnap.docs.filter(d => d.id !== userId && d.data().role === 'admin');
-        if(otherAdmins.length === 0 && membersSnap.docs.length > 1){
-            throw new Error("Transfer ownership to another member before leaving, or delete the community.");
-        }
-      }
-
-      const commRef = doc(db, 'communities', communityId);
-      const commSnap = await t.get(commRef);
-      if(commSnap.exists()){
-          t.update(commRef, { memberCount: Math.max(0, commSnap.data().memberCount - 1) });
-      }
-
-      const userRef = doc(db, 'users', userId);
-      t.update(userRef, { hasJoinedCommunity: "" });
-      
-      t.delete(memberRef);
-    });
+    const leaveFn = httpsCallable(fbFunctions, 'leaveCommunity');
+    const result = await leaveFn({ communityId });
+    return result.data;
   } catch(e) {
     console.error("Error leaving community", e);
     throw e;

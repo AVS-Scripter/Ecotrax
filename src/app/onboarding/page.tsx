@@ -63,7 +63,7 @@ export default function OnboardingPage() {
         return;
       }
 
-      await useInvite(joinCode, user.uid, profile.name);
+      await useInvite(joinCode);
       router.push(`/community?id=${invite.communityId}`);
     } catch (error: any) {
       console.error(error);
