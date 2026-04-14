@@ -10,12 +10,13 @@ export interface Report {
   id?: string;
   communityId: string;
   userId?: string;
-  name: string;
   issueType: string;
   description: string;
-  location: string;
-  image: string | null;
-  status: 'in-progress' | 'resolved' | 'unresolved';
+  locationName: string;
+  location?: any; // GeoPoint optional
+  name?: string; // Display name for report
+  image?: string | null; // Image data
+  status: 'open' | 'in_progress' | 'resolved' | 'in-progress' | 'unresolved';
   assignedTo?: string | null;
   createdAt: Timestamp;
 }
@@ -32,7 +33,6 @@ export async function createReport(reportData: Omit<Report, 'id' | 'createdAt'>)
     const docRef = await addDoc(collection(db, REPORTS_COLLECTION), {
       ...reportData,
       status: reportData.status || 'unresolved',
-      assignedTo: null,
       createdAt: serverTimestamp(),
     });
 
@@ -105,4 +105,44 @@ export async function updateReportStatus(reportId: string, newStatus: string) {
     if (!db) return;
     const ref = doc(db, REPORTS_COLLECTION, reportId);
     await updateDoc(ref, { status: newStatus });
+}
+
+export async function getReportsByUser(communityId: string, userId: string): Promise<Report[]> {
+  if (!db) return [];
+  try {
+    const q = query(
+      collection(db, REPORTS_COLLECTION),
+      where('communityId', '==', communityId),
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Report[];
+  } catch (error) {
+    console.error('Error fetching user reports:', error);
+    return [];
+  }
+}
+
+export async function getReportsByStatus(communityId: string, status: string): Promise<Report[]> {
+  if (!db) return [];
+  try {
+    const q = query(
+      collection(db, REPORTS_COLLECTION),
+      where('communityId', '==', communityId),
+      where('status', '==', status),
+      orderBy('createdAt', 'desc')
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Report[];
+  } catch (error) {
+    console.error('Error fetching reports by status:', error);
+    return [];
+  }
 }

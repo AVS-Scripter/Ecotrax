@@ -8,6 +8,7 @@ export interface Invite {
   createdBy: string;
   maxUses: number | null;
   usedCount: number;
+  isActive: boolean;
   expiresAt: any;
   createdAt: any;
 }
@@ -29,6 +30,7 @@ export async function createInvite(communityId: string, communityName: string, c
     createdBy,
     maxUses,
     usedCount: 0,
+    isActive: true,
     expiresAt: Timestamp.fromDate(expiresAt),
     createdAt: serverTimestamp()
   };

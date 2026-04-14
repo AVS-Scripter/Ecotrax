@@ -60,26 +60,26 @@ service cloud.firestore {
 
       match /members/{memberId} {
         allow read: if isAuthenticated(); // Allow reading members to see roles etc.
-        
+
         // Allow joining: user creates their own member record
         allow create: if isAuthenticated() && memberId == request.auth.uid;
-        
+
         // Allow leave: user deletes their own member record
         allow delete: if isAuthenticated() && memberId == request.auth.uid;
-        
+
         // Role changes: only admins can update roles
         allow update: if getRole(communityId) == 'admin';
       }
-      
-      match /reports/{reportId} {
-        // Members create their own reports.
-        allow create: if isMember(communityId)
-                      && request.resource.data.authorId == request.auth.uid;
-                       
-        // Members can read reports in their community. Staff can manage.
-        allow read: if isMember(communityId);
-        allow update, delete: if getRole(communityId) in ['admin', 'moderator'];
-      }
+    }
+
+    match /reports/{reportId} {
+      // Members create reports for their community
+      allow create: if isMember(request.resource.data.communityId)
+                      && request.resource.data.userId == request.auth.uid;
+
+      // Members can read reports in their community. Staff can manage.
+      allow read: if isMember(resource.data.communityId);
+      allow update, delete: if getRole(resource.data.communityId) in ['admin', 'moderator'];
     }
 
     match /invites/{inviteId} {

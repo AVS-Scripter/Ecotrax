@@ -40,7 +40,7 @@ export default function OnboardingPage() {
     setIsCreating(true);
     setCreateError('');
     try {
-      const { communityId } = await createCommunity(createName, createIcon, user.uid, profile.name);
+      const { communityId } = await createCommunity(createName, createIcon, user.uid, profile.displayName);
       router.push(`/community?id=${communityId}`);
     } catch (error: any) {
       console.error(error);
@@ -63,7 +63,7 @@ export default function OnboardingPage() {
         return;
       }
 
-      await useInvite(joinCode, user.uid, profile.name);
+      await useInvite(joinCode, user.uid, profile.displayName);
       router.push(`/community?id=${invite.communityId}`);
     } catch (error: any) {
       console.error(error);
@@ -83,7 +83,7 @@ export default function OnboardingPage() {
       
       <div className="w-full max-w-4xl relative animate-in fade-in zoom-in-95 duration-500 space-y-8">
         <div className="text-center space-y-2">
-            <h1 className="text-3xl font-headline font-bold">Welcome to Ecotrax, {profile?.name}</h1>
+            <h1 className="text-3xl font-headline font-bold">Welcome to Ecotrax, {profile?.displayName}</h1>
             <p className="text-muted-foreground text-sm">Join a community or start your own to begin.</p>
         </div>
 

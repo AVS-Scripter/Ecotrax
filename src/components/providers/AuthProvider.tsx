@@ -6,7 +6,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 interface UserProfile {
-  name: string;
+  displayName: string;
   email: string;
   rank: number | null;
   points: number;

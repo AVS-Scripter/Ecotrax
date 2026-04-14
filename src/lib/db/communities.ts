@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, doc, setDoc, getDoc, updateDoc, serverTimestamp, runTransaction, Timestamp, arrayUnion } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, updateDoc, serverTimestamp, runTransaction, Timestamp, arrayUnion, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 
 export interface Community {
   id?: string;
@@ -31,7 +31,8 @@ export async function createCommunity(name: string, icon: string, userId: string
     await runTransaction(db, async (transaction) => {
       // Validate that the user hasn't already joined a community
       const userSnap = await transaction.get(userRef);
-      if (userSnap.exists() && userSnap.data().hasJoinedCommunity) {
+      const userData = userSnap.data();
+      if (userSnap.exists() && userData?.joinedCommunities && userData.joinedCommunities.length > 0) {
         throw new Error("You are already part of a community! Please leave your current community before creating a new one.");
       }
 
@@ -117,5 +118,40 @@ export async function getCommunity(communityId: string): Promise<Community | nul
   } catch (error) {
     console.error('Error fetching community:', error);
     return null;
+  }
+}
+
+export async function searchComunitiesByName(name: string, limitResults: number = 10): Promise<Community[]> {
+  if (!db) return [];
+  try {
+    const q = query(
+      collection(db, COMMUNITIES_COLLECTION),
+      where('metadata.isDeleted', '==', false),
+      where('name', '>=', name),
+      where('name', '<=', name + '\uf8ff'),
+      limit(limitResults)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Community));
+  } catch (error) {
+    console.error('Error searching communities:', error);
+    return [];
+  }
+}
+
+export async function getAllCommunities(limitResults: number = 20): Promise<Community[]> {
+  if (!db) return [];
+  try {
+    const q = query(
+      collection(db, COMMUNITIES_COLLECTION),
+      where('metadata.isDeleted', '==', false),
+      orderBy('createdAt', 'desc'),
+      limit(limitResults)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Community));
+  } catch (error) {
+    console.error('Error fetching communities:', error);
+    return [];
   }
 }

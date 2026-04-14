@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, doc, setDoc, getDoc, updateDoc, serverTimestamp, runTransaction, query, getDocs, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, updateDoc, serverTimestamp, runTransaction, query, getDocs, deleteDoc, where, orderBy, limit, arrayRemove, increment } from 'firebase/firestore';
 
 export interface Member {
   id?: string;
@@ -61,11 +61,9 @@ export async function updateMemberRole(communityId: string, targetUserId: string
   }
 }
 
-import { arrayRemove, increment } from 'firebase/firestore';
-
 export async function leaveCommunity(communityId: string, userId: string) {
   if (!db) throw new Error("Firebase not initialized");
-  
+
   try {
     const result = await runTransaction(db, async (transaction) => {
       const commRef = doc(db, 'communities', communityId);
@@ -81,14 +79,14 @@ export async function leaveCommunity(communityId: string, userId: string) {
       if (role === 'admin') {
         // Check if this is the last admin
         const membersRef = collection(db, 'communities', communityId, 'members');
-        // Note: Querying in a transaction is tricky in some versions, 
-        // but here we can just use the memberCount if we trust it, 
+        // Note: Querying in a transaction is tricky in some versions,
+        // but here we can just use the memberCount if we trust it,
         // or actually fetch all members (though that's expensive).
         // Since we are moving to client-side, we'll try to do a check.
         const q = query(membersRef);
-        const membersSnap = await getDocs(q); 
+        const membersSnap = await getDocs(q);
         const otherAdmins = membersSnap.docs.filter(d => d.id !== userId && d.data().role === 'admin');
-        
+
         if (otherAdmins.length === 0) {
           throw new Error("You are the final admin. Transfer ownership or delete the community before leaving.");
         }
@@ -97,8 +95,8 @@ export async function leaveCommunity(communityId: string, userId: string) {
       const userRef = doc(db, 'users', userId);
 
       transaction.delete(memberRef);
-      transaction.update(commRef, { 
-        'metadata.memberCount': increment(-1) 
+      transaction.update(commRef, {
+        'metadata.memberCount': increment(-1)
       });
       transaction.update(userRef, {
         joinedCommunities: arrayRemove(communityId)
@@ -111,5 +109,34 @@ export async function leaveCommunity(communityId: string, userId: string) {
   } catch(e) {
     console.error("Error leaving community", e);
     throw e;
+  }
+}
+
+export async function getMembersWithRole(communityId: string, role: 'admin' | 'moderator' | 'member'): Promise<Member[]> {
+  if (!db) return [];
+  try {
+    const q = query(
+      collection(db, 'communities', communityId, 'members'),
+      where('role', '==', role)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
+  } catch (error) {
+    console.error("Error fetching members with role", error);
+    return [];
+  }
+}
+
+export async function searchMembers(communityId: string, displayName: string): Promise<Member[]> {
+  if (!db) return [];
+  try {
+    // Firestore doesn't support full text search natively, so we fetch and filter
+    const q = query(collection(db, 'communities', communityId, 'members'));
+    const snap = await getDocs(q);
+    const members = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
+    return members.filter(m => m.displayName.toLowerCase().includes(displayName.toLowerCase()));
+  } catch (error) {
+    console.error("Error searching members", error);
+    return [];
   }
 }

@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { incrementTotalUsers } from './stats';
 
@@ -15,11 +15,11 @@ export async function createOrUpdateUserProfile(user: User, customName?: string)
       const finalName = customName || user.displayName || user.email?.split('@')[0] || 'Unknown Citizen';
 
       await setDoc(userRef, {
-        name: finalName,
+        displayName: finalName,
         email: user.email,
         rank: null,
         points: 0,
-        hasJoinedCommunity: "",
+        joinedCommunities: [],
         createdAt: serverTimestamp(),
       });
 
@@ -38,4 +38,16 @@ export async function getUserProfile(userId: string) {
     return snap.data();
   }
   return null;
+}
+
+export async function updateUserPoints(userId: string, points: number) {
+  if (!db) return;
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, { points });
+}
+
+export async function updateUserRank(userId: string, rank: number) {
+  if (!db) return;
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, { rank });
 }
