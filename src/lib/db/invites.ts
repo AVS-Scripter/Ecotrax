@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, doc, setDoc, getDoc, updateDoc, serverTimestamp, runTransaction, Timestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, updateDoc, serverTimestamp, runTransaction, Timestamp, query, where, getDocs, orderBy, arrayUnion } from 'firebase/firestore';
 
 export interface Invite {
   id?: string;

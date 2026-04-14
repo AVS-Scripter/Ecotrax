@@ -1,171 +1,94 @@
-# Ecotrax Backend Database Integration Plan (Improved Version)
+# Ecotrax Backend Database Integration Plan (Optimized Architecture)
 
-This document outlines the enhanced and scalable integration of Firebase Firestore for Ecotrax. The updated design ensures support for communities, role-based access, activity tracking, and large-scale data handling.
-
----
-
-# Phase 1: Database Schema Design (Improved)
-
-We will use Cloud Firestore with a modular and scalable structure.
+This document outlines the final scalable architecture for the Ecotrax community system. It focuses on high-performance queries, operational atomicity, and secure client-side transactions.
 
 ---
 
 ## 1. `users` (Collection)
-Stores user profiles and onboarding state.
+Stores user profiles and real-time membership state.
 
-- Document ID: `uid` (Firebase Auth UID)
-- Fields:
-  - `name`
-  - `email`
-  - `points` (number, default 0)
-  - `rank` (number, optional)
-  - `hasJoinedCommunity` (boolean)
-  - `createdAt` (timestamp)
-
-> Note:
-> - Roles are NOT stored here (handled per community)
+- **Document ID**: `uid` (Firebase Auth UID)
+- **Fields**:
+  - `displayName`: string
+  - `email`: string
+  - `joinedCommunities`: string[]  **[Optimized]** 
+    - Enables O(1) membership validation in Security Rules.
+    - Allows instant "List My Communities" dashboard queries via the `in` operator.
+  - `rank`: number | null
+  - `points`: number
+  - `createdAt`: timestamp
 
 ---
 
 ## 2. `communities` (Collection)
-Stores all community metadata.
+Main community data repository. Uses a metadata map to separate content from state.
 
-- Document ID: Auto-generated
-- Fields:
-  - `name`
-  - `icon`
-  - `createdBy` (userId)
-  - `isPublic` (boolean)
-  - `createdAt` (timestamp)
-  - `isDeleted` (boolean, default false)
-
----
+- **Document ID**: Auto-generated
+- **Fields**:
+  - `name`: string
+  - `icon`: string
+  - `createdBy`: userId (UID)
+  - `metadata`: map
+    - `memberCount`: number (Maintained via increment/decrement during transactions)
+    - `isDeleted`: boolean (For soft-delete patterns)
+    - `deletedAt`: timestamp | null
+  - `createdAt`: timestamp
 
 ### Subcollection: `members`
 Path: `communities/{communityId}/members/{userId}`
 
-- Fields:
-  - `role` ("admin" | "moderator" | "member")
-  - `joinedAt` (timestamp)
-
-> Benefits:
-> - Avoids document size limits
-> - Enables role-based queries
-> - Supports large communities
+- **Fields**:
+  - `role`: "admin" | "moderator" | "member"
+  - `displayName`: string (Denormalized for fast list rendering)
+  - `joinedAt`: timestamp
 
 ---
 
 ## 3. `invites` (Collection)
-Handles secure community joining.
+Root-level collection for universal invite code validation.
 
-- Document ID: Auto-generated
-- Fields:
-  - `communityId`
-  - `code` (unique string)
-  - `createdBy`
-  - `uses` (number)
-  - `maxUses` (number, optional)
-  - `expiresAt` (timestamp, optional)
-  - `createdAt` (timestamp)
-
-> Supports:
-> - Invite links
-> - Expiry + usage limits
-> - Abuse prevention
+- **Document ID**: `code` (Unique short string, e.g., "AFX79G")
+- **Fields**:
+  - `communityId`: string
+  - `communityName`: string
+  - `createdBy`: string (UID)
+  - `maxUses`: number | null
+  - `usedCount`: number
+  - `expiresAt`: timestamp
+  - `isActive`: boolean
+  - `createdAt`: timestamp
 
 ---
 
 ## 4. `reports` (Collection)
-Stores environmental reports scoped to communities.
+Environmental incidence reports scoped to communities.
 
-- Document ID: Auto-generated
-- Fields:
-  - `communityId`
-  - `userId`
-  - `issueType` (air, water, garbage, noise)
-  - `description`
-  - `locationName`
-  - `coordinates` (GeoPoint)
-  - `imageUrl`
-  - `status` ("open" | "in_progress" | "resolved")
-  - `assignedTo` (userId, optional)
-  - `createdAt` (timestamp)
-
-> Improvements:
-> - Community-level filtering
-> - Admin control enabled
+- **Document ID**: Auto-generated
+- **Fields**:
+  - `communityId`: string (For filtering)
+  - `userId`: string
+  - `issueType`: "air" | "water" | "garbage" | "noise"
+  - `description`: string
+  - `locationName`: string
+  - `location`: GeoPoint (Optional)
+  - `status`: "open" | "in_progress" | "resolved"
+  - `createdAt`: timestamp
 
 ---
 
-## 5. `user_challenges` (Collection)
-Tracks user participation in challenges (normalized).
+## 5. Security & Consistency Strategy
 
-- Document ID: Auto-generated
-- Fields:
-  - `userId`
-  - `challengeId`
-  - `progress`
-  - `joinedAt`
+### Atomic Operations
+All membership changes (Joining an invite, Leaving, Setting Roles) MUST be performed using **Firestore Transactions**. 
+- **Join**: Atomic increment of `usedCount` + document creation in `members` + array update in `users`.
+- **Leave**: Atomic decrement of `memberCount` + document deletion in `members` + array removal in `users`.
 
-> Replaces array-based storage for scalability
+### Security Rules (RBAC)
+- **Member Access**: Restricted to communities listed in the user's `joinedCommunities` array.
+- **Admin Access**: Verified using the `role` field in the community's `members` subcollection.
+- **State Protection**: Metadata fields like `isDeleted` or `memberCount` are guarded to prevent arbitrary client manipulation outside of verified transactional flows.
 
----
-
-## 6. `challenges` (Collection)
-Stores community challenges.
-
-- Document ID: Auto-generated
-- Fields:
-  - `title`
-  - `category`
-  - `description`
-  - `deadline`
-  - `createdAt`
-
----
-
-## 7. `stats` (Collection)
-Replaces global singleton stats.
-
-### Option A: Aggregated Stats
-- Document ID: `global`
-  - `totalUsers`
-  - `totalReports`
-
-### Option B: Time-based Stats (Recommended)
-Path: `stats/daily/{date}`
-
-- Fields:
-  - `reportsCount`
-  - `usersCount`
-
-> Avoids write bottlenecks
-
----
-
-## 8. `activity_logs` (Collection)
-Tracks all important actions for auditing and debugging.
-
-- Document ID: Auto-generated
-- Fields:
-  - `actionType`  
-    (e.g., "CREATE_COMMUNITY", "JOIN_COMMUNITY", "CREATE_REPORT", "UPDATE_REPORT_STATUS")
-  - `performedBy` (userId)
-  - `communityId` (optional, if applicable)
-  - `targetId` (reportId / communityId / userId)
-  - `metadata` (object for extra details)
-  - `createdAt` (timestamp)
-
-### Example:
-```json
-{
-  "actionType": "UPDATE_REPORT_STATUS",
-  "performedBy": "user_123",
-  "communityId": "community_456",
-  "targetId": "report_789",
-  "metadata": {
-    "oldStatus": "open",
-    "newStatus": "resolved"
-  },
-  "createdAt": "timestamp"
-}
+### Performance Notes
+- **Dashboard Load**: The use of the `joinedCommunities` array on the User object prevents N+1 queries. We fetch precisely the community documents the user belongs to.
+- **Scalability**: By using root-level `invites`, we avoid global `collectionGroup` indexes for simple invite-code lookups.
+- **Persistence**: Soft-deletion in `communities` ensures structural data remains for auditing while being hidden from the active user experience.
