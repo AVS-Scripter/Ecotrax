@@ -13,11 +13,7 @@ import {
   APIProvider, 
   Map, 
   AdvancedMarker, 
-  Pin, 
-  InfoWindow,
-  useMap,
-  ControlPosition,
-  MapControl
+  useMap
 } from '@vis.gl/react-google-maps';
 import { supabase } from '@/lib/supabase';
 import { LocationPermissionDialog } from '@/components/map/LocationPermissionDialog';
@@ -37,6 +33,14 @@ interface Report {
 }
 
 export default function MapPage() {
+  return (
+    <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}>
+      <MapContent />
+    </APIProvider>
+  );
+}
+
+function MapContent() {
   const { toast } = useToast();
   const map = useMap();
   const [reports, setReports] = useState<Report[]>([]);
@@ -44,9 +48,6 @@ export default function MapPage() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const hasCenteredOnUser = useRef(false);
-  
-  const MAP_ID = "exotrack_map_v1";
 
   // Fetch reports from Supabase
   useEffect(() => {
@@ -81,7 +82,7 @@ export default function MapPage() {
     if ("permissions" in navigator) {
       navigator.permissions.query({ name: 'geolocation' as PermissionName }).then((result) => {
         if (result.state === 'granted') {
-          handleLocate(true); // Silent locate if already granted
+          handleLocate(true);
         } else if (result.state === 'prompt') {
           setTimeout(() => setIsLocationModalOpen(true), 1200);
         }
@@ -102,12 +103,9 @@ export default function MapPage() {
           setUserLocation(coords);
           setIsLocationModalOpen(false);
           
-          // Only auto-pan to user if it's the first time or they manually clicked locate
-          if (!isInitial || !hasCenteredOnUser.current) {
-            // We use a helper to pan the map if it's already loaded
-            // Since useMap might be null here, we can't use it directly in handleLocate easily
-            // Instead, we rely on the useEffect below to handle the initial pan
-            hasCenteredOnUser.current = true;
+          if (map) {
+            map.panTo(coords);
+            if (!isInitial) map.setZoom(14);
           }
         },
         (error) => {
@@ -122,7 +120,7 @@ export default function MapPage() {
         }
       );
     }
-  }, [toast]);
+  }, [map, toast]);
 
   const filteredReports = useMemo(() => {
     return reports.filter(report => 
@@ -131,25 +129,28 @@ export default function MapPage() {
   }, [reports, activeFilter]);
 
   return (
-    <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}>
-      <div className="h-[100vh] pt-20 flex relative overflow-hidden bg-[#0c1410]">
-        
-        {/* Sidebar Overlay */}
-        <div className="absolute top-24 left-6 z-10 w-80 space-y-4 pointer-events-none">
-          <div className="glass p-4 rounded-2xl border border-white/5 space-y-4 shadow-2xl pointer-events-auto">
+    <div className="h-[100vh] pt-20 flex relative overflow-hidden bg-[#0c1410]">
+      {/* Sidebar Overlay */}
+      <div className="absolute top-24 left-6 z-10 w-80 space-y-4 pointer-events-none">
+        <div className="glass p-5 rounded-2xl border border-white/5 space-y-5 shadow-2xl pointer-events-auto">
+          <div className="space-y-1">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-primary/80 ml-1">Live Feed</h2>
             <div className="relative">
-              <Input placeholder="Search reports..." className="bg-white/5 border-white/10 rounded-xl pl-10 h-11" />
+              <Input placeholder="Search locations..." className="bg-white/5 border-white/10 rounded-xl pl-10 h-11 focus:ring-primary/30" />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             </div>
-            
+          </div>
+          
+          <div className="space-y-1">
+            <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Filter Issues</h2>
             <div className="flex flex-wrap gap-2">
               {['all', 'air', 'water', 'garbage', 'noise'].map(f => (
                 <Badge 
                   key={f}
                   variant={activeFilter === f ? 'default' : 'outline'}
                   className={cn(
-                    "cursor-pointer capitalize px-3 py-1 rounded-full text-[10px] tracking-widest",
-                    activeFilter === f ? "neon-glow" : "border-white/10 hover:bg-white/5"
+                    "cursor-pointer capitalize px-3 py-1.5 rounded-full text-[10px] tracking-widest transition-all",
+                    activeFilter === f ? "neon-glow scale-105" : "border-white/10 hover:bg-white/5 opacity-60 hover:opacity-100"
                   )}
                   onClick={() => setActiveFilter(f)}
                 >
@@ -157,155 +158,119 @@ export default function MapPage() {
                 </Badge>
               ))}
             </div>
-
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full text-[10px] tracking-widest uppercase gap-2 h-9 rounded-xl border-white/10 hover:bg-white/5"
-              onClick={() => handleLocate(false)}
-            >
-              <Locate className="w-3 h-3 text-primary" />
-              {userLocation ? "Re-center on Me" : "Find Reports Near Me"}
-            </Button>
           </div>
+        </div>
 
-          {selectedReport && (
-            <div className="glass p-6 rounded-2xl border border-white/10 shadow-2xl animate-in slide-in-from-left-4 duration-300 pointer-events-auto">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                    {selectedReport.issue_type === 'air' && <Wind className="w-5 h-5 text-blue-400" />}
-                    {selectedReport.issue_type === 'water' && <Droplets className="w-5 h-5 text-teal-400" />}
-                    {selectedReport.issue_type === 'garbage' && <Trash2 className="w-5 h-5 text-orange-400" />}
-                    {selectedReport.issue_type === 'noise' && <Volume2 className="w-5 h-5 text-purple-400" />}
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground uppercase font-bold tracking-widest">{selectedReport.issue_type}</div>
-                    <div className="font-bold line-clamp-1">{selectedReport.name}</div>
-                  </div>
+        {selectedReport && (
+          <div className="glass p-6 rounded-2xl border border-white/10 shadow-2xl animate-in slide-in-from-left-4 duration-300 pointer-events-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                  {selectedReport.issue_type === 'air' && <Wind className="w-5 h-5 text-blue-400" />}
+                  {selectedReport.issue_type === 'water' && <Droplets className="w-5 h-5 text-teal-400" />}
+                  {selectedReport.issue_type === 'garbage' && <Trash2 className="w-5 h-5 text-orange-400" />}
+                  {selectedReport.issue_type === 'noise' && <Volume2 className="w-5 h-5 text-purple-400" />}
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => setSelectedReport(null)} className="h-6 w-6">&times;</Button>
+                <div>
+                  <div className="text-xs text-muted-foreground uppercase font-bold tracking-widest">{selectedReport.issue_type}</div>
+                  <div className="font-bold line-clamp-1">{selectedReport.name}</div>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-                {selectedReport.description}
-                <br />
-                <span className="text-primary font-bold mt-2 block text-xs">Location: {selectedReport.location}</span>
-              </p>
-              <div className="flex gap-2">
-                <Button variant="default" className="flex-1 rounded-xl h-9 text-xs">View Full Details</Button>
-                <Button variant="outline" className="rounded-xl h-9 px-3"><Info className="w-4 h-4" /></Button>
-              </div>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedReport(null)} className="h-6 w-6 rounded-full">&times;</Button>
             </div>
-          )}
-        </div>
-
-        {/* Main Map Area */}
-        <div className="flex-1 relative">
-          <Map
-            defaultCenter={userLocation || { lat: 0, lng: 0 }}
-            defaultZoom={userLocation ? 13 : 3}
-            mapId={MAP_ID}
-            disableDefaultUI={true}
-            className="w-full h-full"
-            gestureHandling={'greedy'}
-            styles={darkMapStyles}
-          >
-            <MapHandler userLocation={userLocation} />
-
-            {/* User Location Marker - Slightly Larger */}
-            {userLocation && (
-              <AdvancedMarker position={userLocation}>
-                <div className="relative">
-                  <div className="absolute -inset-6 bg-primary/20 rounded-full animate-ping" />
-                  <div className="w-8 h-8 bg-primary rounded-full border-2 border-white shadow-2xl flex items-center justify-center transition-transform hover:scale-110">
-                    <Navigation className="w-4 h-4 text-white fill-current transform -rotate-45" />
-                  </div>
-                </div>
-              </AdvancedMarker>
-            )}
-
-            {/* Report Markers */}
-            {filteredReports.map((report) => (
-              <AdvancedMarker
-                key={report.id}
-                position={{ lat: report.latitude!, lng: report.longitude! }}
-                onClick={() => setSelectedReport(report)}
-              >
-                <div className={cn(
-                  "p-2 rounded-xl border-2 border-white shadow-xl transition-all duration-300 hover:scale-110",
-                  selectedReport?.id === report.id ? "scale-125 bg-white text-background" : "bg-background/80 backdrop-blur-md"
-                )}>
-                  {report.issue_type === 'air' && <Wind className="w-4 h-4 text-blue-400" />}
-                  {report.issue_type === 'water' && <Droplets className="w-4 h-4 text-teal-400" />}
-                  {report.issue_type === 'garbage' && <Trash2 className="w-4 h-4 text-orange-400" />}
-                  {report.issue_type === 'noise' && <Volume2 className="w-4 h-4 text-purple-400" />}
-                </div>
-              </AdvancedMarker>
-            ))}
-
-            <MapControls onLocate={() => handleLocate(false)} />
-          </Map>
-        </div>
-
-        {/* Permission Dialog */}
-        <LocationPermissionDialog 
-          isOpen={isLocationModalOpen}
-          onOpenChange={setIsLocationModalOpen}
-          onAccept={() => handleLocate(false)}
-          onDecline={() => setIsLocationModalOpen(false)}
-        />
+            <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+              {selectedReport.description}
+              <br />
+              <span className="text-primary font-bold mt-2 block text-xs">Location: {selectedReport.location}</span>
+            </p>
+            <div className="flex gap-2">
+              <Button variant="default" className="flex-1 rounded-xl h-10 text-xs font-bold uppercase tracking-wider">View Full Details</Button>
+              <Button variant="outline" className="rounded-xl h-10 px-3 border-white/10"><Info className="w-4 h-4" /></Button>
+            </div>
+          </div>
+        )}
       </div>
-    </APIProvider>
-  );
-}
 
-/**
- * Component to handle map interactions like panning
- */
-function MapHandler({ userLocation }: { userLocation: {lat: number, lng: number} | null }) {
-  const map = useMap();
-  const hasCentered = useRef(false);
+      {/* Main Map Area */}
+      <div className="flex-1 relative">
+        <Map
+          defaultCenter={userLocation || { lat: 0, lng: 0 }}
+          defaultZoom={userLocation ? 13 : 3}
+          mapId="exotrack_map_v1"
+          disableDefaultUI={true}
+          className="w-full h-full"
+          gestureHandling={'greedy'}
+          styles={darkMapStyles}
+        >
+          {/* User Location Marker */}
+          {userLocation && (
+            <AdvancedMarker position={userLocation}>
+              <div className="relative">
+                <div className="absolute -inset-8 bg-primary/10 rounded-full animate-pulse" />
+                <div className="absolute -inset-4 bg-primary/20 rounded-full animate-ping" />
+                <div className="w-10 h-10 bg-primary rounded-full border-4 border-white shadow-[0_0_20px_rgba(var(--primary),0.5)] flex items-center justify-center transition-transform hover:scale-110">
+                  <Navigation className="w-5 h-5 text-white fill-current transform -rotate-45" />
+                </div>
+              </div>
+            </AdvancedMarker>
+          )}
 
-  useEffect(() => {
-    if (map && userLocation && !hasCentered.current) {
-      map.setCenter(userLocation);
-      map.setZoom(13);
-      hasCentered.current = true;
-    }
-  }, [map, userLocation]);
+          {/* Report Markers */}
+          {filteredReports.map((report) => (
+            <AdvancedMarker
+              key={report.id}
+              position={{ lat: report.latitude!, lng: report.longitude! }}
+              onClick={() => setSelectedReport(report)}
+            >
+              <div className={cn(
+                "p-2.5 rounded-2xl border-2 border-white/20 shadow-2xl transition-all duration-300 hover:scale-110 cursor-pointer",
+                selectedReport?.id === report.id ? "scale-125 bg-white text-background neon-glow border-primary" : "bg-background/80 backdrop-blur-md"
+              )}>
+                {report.issue_type === 'air' && <Wind className="w-5 h-5 text-blue-400" />}
+                {report.issue_type === 'water' && <Droplets className="w-5 h-5 text-teal-400" />}
+                {report.issue_type === 'garbage' && <Trash2 className="w-5 h-5 text-orange-400" />}
+                {report.issue_type === 'noise' && <Volume2 className="w-5 h-5 text-purple-400" />}
+              </div>
+            </AdvancedMarker>
+          ))}
+        </Map>
 
-  return null;
-}
+        {/* Map Controls */}
+        <div className="absolute bottom-8 right-8 flex flex-col gap-3 z-10 pointer-events-auto">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="glass w-12 h-12 rounded-2xl shadow-2xl hover:bg-white/10 border-white/10"
+            onClick={() => map?.setZoom((map.getZoom() || 10) + 1)}
+          >
+            <ZoomIn className="w-5 h-5" />
+          </Button>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="glass w-12 h-12 rounded-2xl shadow-2xl hover:bg-white/10 border-white/10"
+            onClick={() => map?.setZoom((map.getZoom() || 10) - 1)}
+          >
+            <ZoomOut className="w-5 h-5" />
+          </Button>
+          <Button 
+            variant="default" 
+            size="icon" 
+            className="neon-glow w-12 h-12 rounded-2xl shadow-[0_0_20px_rgba(var(--primary),0.3)] hover:scale-105 transition-transform"
+            onClick={() => handleLocate(false)}
+          >
+            <Locate className="w-5 h-5" />
+          </Button>
+        </div>
+      </div>
 
-function MapControls({ onLocate }: { onLocate: () => void }) {
-  const map = useMap();
-  
-  return (
-    <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-10 pointer-events-auto">
-      <Button 
-        variant="outline" 
-        size="icon" 
-        className="glass rounded-xl shadow-xl hover:bg-white/10"
-        onClick={() => map?.setZoom((map.getZoom() || 10) + 1)}
-      >
-        <ZoomIn className="w-4 h-4" />
-      </Button>
-      <Button 
-        variant="outline" 
-        size="icon" 
-        className="glass rounded-xl shadow-xl hover:bg-white/10"
-        onClick={() => map?.setZoom((map.getZoom() || 10) - 1)}
-      >
-        <ZoomOut className="w-4 h-4" />
-      </Button>
-      <Button 
-        variant="outline" 
-        size="icon" 
-        className="glass rounded-xl shadow-xl hover:bg-white/10"
-        onClick={onLocate}
-      >
-        <Locate className="w-4 h-4 text-primary" />
-      </Button>
+      {/* Permission Dialog */}
+      <LocationPermissionDialog 
+        isOpen={isLocationModalOpen}
+        onOpenChange={setIsLocationModalOpen}
+        onAccept={() => handleLocate(false)}
+        onDecline={() => setIsLocationModalOpen(false)}
+      />
     </div>
   );
 }
@@ -313,10 +278,10 @@ function MapControls({ onLocate }: { onLocate: () => void }) {
 const darkMapStyles = [
   { elementType: "geometry", stylers: [{ color: "#0c1410" }] },
   { elementType: "labels.text.stroke", stylers: [{ color: "#0c1410" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#5d6d63" }] },
   { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
   { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#05130d" }] },
+  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#081a12" }] },
   { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] },
   { featureType: "road", elementType: "geometry", stylers: [{ color: "#1a2a22" }] },
   { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a25" }] },
