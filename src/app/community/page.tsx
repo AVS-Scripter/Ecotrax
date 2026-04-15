@@ -20,18 +20,10 @@ export default function CommunityPageWrapper() {
 
   if (!user || !isOnboarded || !communityId) {
     return (
-      <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto space-y-8 text-center pt-32">
+      <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto space-y-6 text-center pt-32">
         <h1 className="text-3xl font-headline font-bold">Community Hub</h1>
-        <p className="text-muted-foreground">Sign in and join a community to participate in discussions and events.</p>
-        {!user ? (
-            <Link href="/login">
-                <Button className="mt-4 neon-glow rounded-xl">Sign in to continue</Button>
-            </Link>
-        ) : (
-            <Link href="/onboarding">
-                <Button className="mt-4 neon-glow rounded-xl">Join a Community</Button>
-            </Link>
-        )}
+        <p className="text-muted-foreground">This area is currently a work in progress and will be released shortly. Until then, please wait patiently. Thank you.</p>
+        <div className="text-6xl">🙏</div>
       </div>
     );
   }

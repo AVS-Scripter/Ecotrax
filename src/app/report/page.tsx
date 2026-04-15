@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -21,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
+import { demoReportItems } from '@/lib/demo-data';
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -33,12 +35,16 @@ const formSchema = z.object({
 
 export default function ReportPage() {
   const { user, loading, communityId, isOnboarded } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const demoMode = searchParams.get('demo') === 'true';
+  const authBlocked = !user || !isOnboarded || !communityId;
 
   if (loading) {
     return <div className="pt-24 text-center">Loading...</div>;
   }
 
-  if (!user || !isOnboarded || !communityId) {
+  if (authBlocked && !demoMode) {
     return (
       <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto space-y-8 text-center pt-32">
         <h1 className="text-3xl font-headline font-bold">Environmental Reports</h1>
@@ -52,12 +58,193 @@ export default function ReportPage() {
                 <Button className="mt-4 neon-glow rounded-xl">Join a Community</Button>
             </Link>
         )}
+        <div className="fixed bottom-6 right-6 z-50">
+          <Button className="rounded-full neon-glow" onClick={() => router.push('/report?demo=true')}>
+            Try Reports Demo
+          </Button>
+        </div>
       </div>
     );
   }
 
+  if (authBlocked && demoMode) {
+    return <DemoReportPageContent onExit={() => router.push('/report')} />;
+  }
+
   return (
     <ReportPageContent />
+  );
+}
+
+function DemoReportPageContent({ onExit }: { onExit: () => void }) {
+  const { toast } = useToast();
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'in-progress' | 'resolved' | 'unresolved'>('all');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formValues, setFormValues] = useState({
+    name: '',
+    issueType: 'air',
+    description: '',
+    location: '',
+  });
+  const [storedReports, setStoredReports] = useState<any[]>([]);
+
+  useEffect(() => {
+    const stored = typeof window !== 'undefined' ? sessionStorage.getItem('ecotrax-demo-reports') : null;
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setStoredReports(parsed);
+        }
+      } catch (error) {
+        console.error('Failed to load demo reports', error);
+      }
+    }
+  }, []);
+
+  const demoReports = [...storedReports, ...demoReportItems];
+
+  const saveStoredReports = (reports: any[]) => {
+    if (typeof window === 'undefined') return;
+    sessionStorage.setItem('ecotrax-demo-reports', JSON.stringify(reports));
+  };
+
+  const handleCreateDemoReport = async () => {
+    if (!formValues.name || !formValues.issueType || !formValues.description || !formValues.location) {
+      toast({
+        title: 'Missing fields',
+        description: 'Please complete each field to create a demo report.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const newReport = {
+      id: `demo-custom-${Date.now()}`,
+      name: formValues.name,
+      issueType: formValues.issueType,
+      status: 'unresolved',
+      description: formValues.description,
+      location: formValues.location,
+      image_url: null,
+      created_at: new Date().toISOString(),
+    };
+
+    const nextReports = [newReport, ...storedReports];
+    setStoredReports(nextReports);
+    saveStoredReports(nextReports);
+    setIsSubmitting(false);
+    setIsModalOpen(false);
+    setFormValues({ name: '', issueType: 'air', description: '', location: '' });
+
+    toast({
+      title: 'Demo report created',
+      description: 'Your report was added to the local demo view.',
+    });
+  };
+
+  const filteredReports = demoReports.filter((report) => {
+    if (selectedFilter === 'all') return true;
+    return report.status === selectedFilter;
+  });
+
+  return (
+    <div className="pt-24 pb-24 px-4 md:px-6 max-w-7xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-bold font-headline">Reports Demo Mode</h1>
+          <p className="text-muted-foreground">This demo view shows sample reports and local-only creation. No community membership is required.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={onExit} className="rounded-full">
+            Exit Demo
+          </Button>
+          <Button onClick={() => setIsModalOpen(true)} variant="default" className="rounded-full px-4 py-2 neon-glow">
+            + New Report
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-primary/10 bg-primary/5 p-4 text-sm text-primary">
+        Demo reports are stored locally in this browser tab only and will reset when the tab closes.
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 mt-6">
+        {filteredReports.length === 0 ? (
+          <div className="glass p-6 rounded-3xl border border-white/10 text-center col-span-full py-12">
+            <p className="text-muted-foreground">No demo reports found for this filter.</p>
+          </div>
+        ) : (
+          filteredReports.map((report) => (
+            <article key={report.id} className="glass p-6 rounded-3xl border border-white/10 shadow-xl flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold truncate pr-2">{report.name}</h3>
+                <span className={cn('px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap', report.status === 'resolved' ? 'bg-emerald-500/30 text-emerald-200' : report.status === 'in-progress' ? 'bg-blue-500/30 text-blue-100' : 'bg-orange-500/30 text-orange-100')}>
+                  {report.status}
+                </span>
+              </div>
+              <div className="text-xs uppercase tracking-widest text-primary font-bold mb-2">#{report.issueType}</div>
+              <p className="text-sm text-muted-foreground line-clamp-3 mb-4 flex-1">{report.description}</p>
+              <div className="flex items-center gap-2 mb-4 text-xs text-muted-foreground">
+                <MapPin className="w-3 h-3 shrink-0" />
+                <span className="truncate">{report.location || 'Unknown Location'}</span>
+              </div>
+              <div className="pt-4 border-t border-white/5 flex items-center justify-between text-[10px] text-muted-foreground uppercase tracking-widest">
+                <span>{report.created_at ? new Date(report.created_at).toLocaleDateString() : 'Just now'}</span>
+                <span>Ref: {String(report.id).slice(0, 8)}</span>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6" onClick={() => setIsModalOpen(false)}>
+          <div className="bg-card w-full max-w-3xl rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 animate-in zoom-in-90 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold">Create Demo Report</h2>
+              <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)}>
+                ✕
+              </Button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-semibold mb-2 block">Report Title</label>
+                <Input value={formValues.name} onChange={(event) => setFormValues((prev) => ({ ...prev, name: event.target.value }))} placeholder="Pollution near park" className="bg-white/5 border-white/10 rounded-xl py-3" />
+              </div>
+              <div>
+                <label className="text-sm font-semibold mb-2 block">Issue Type</label>
+                <Select value={formValues.issueType} onValueChange={(value) => setFormValues((prev) => ({ ...prev, issueType: value }))}>
+                  <SelectTrigger className="bg-white/5 border-white/10 rounded-xl py-3">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent className="glass">
+                    <SelectItem value="air">Air Pollution</SelectItem>
+                    <SelectItem value="water">Water Quality</SelectItem>
+                    <SelectItem value="garbage">Garbage / Waste</SelectItem>
+                    <SelectItem value="noise">Noise Pollution</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-semibold mb-2 block">Location</label>
+                <Input value={formValues.location} onChange={(event) => setFormValues((prev) => ({ ...prev, location: event.target.value }))} placeholder="Main Street Park" className="bg-white/5 border-white/10 rounded-xl py-3" />
+              </div>
+              <div>
+                <label className="text-sm font-semibold mb-2 block">Description</label>
+                <Textarea value={formValues.description} onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))} placeholder="Describe the issue in detail..." className="bg-white/5 border-white/10 rounded-xl min-h-[120px]" />
+              </div>
+              <Button className="w-full rounded-xl py-3 neon-glow" onClick={handleCreateDemoReport} disabled={isSubmitting}>
+                {isSubmitting ? 'Creating...' : 'Add Demo Report'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
