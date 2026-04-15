@@ -13,17 +13,39 @@ import { supabase } from '@/lib/supabase';
 
 export default function CommunityPageWrapper() {
   const { user, loading, communityId, isOnboarded } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const demoMode = searchParams.get('demo') === 'true';
+  const authBlocked = !user || !isOnboarded || !communityId;
 
   if (loading) {
     return <div className="pt-24 text-center">Loading community...</div>;
   }
 
-  if (!user || !isOnboarded || !communityId) {
+  if (authBlocked && demoMode) {
+    return (
+      <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto space-y-6 text-center pt-32">
+        <h1 className="text-3xl font-headline font-bold">Community Hub Demo</h1>
+        <p className="text-muted-foreground">This is currently a work in progress and will be released shortly. Until then, please wait patiently. Thank you.</p>
+        <div className="text-6xl">🙏</div>
+        <Button variant="outline" className="mt-6 neon-glow rounded-xl" onClick={() => router.push('/community')}>
+          Exit Demo
+        </Button>
+      </div>
+    );
+  }
+
+  if (authBlocked) {
     return (
       <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto space-y-6 text-center pt-32">
         <h1 className="text-3xl font-headline font-bold">Community Hub</h1>
         <p className="text-muted-foreground">This area is currently a work in progress and will be released shortly. Until then, please wait patiently. Thank you.</p>
         <div className="text-6xl">🙏</div>
+        <div className="fixed bottom-6 right-6 z-50">
+          <Button className="rounded-full neon-glow" onClick={() => router.push('/community?demo=true')}>
+            Try Demo
+          </Button>
+        </div>
       </div>
     );
   }
