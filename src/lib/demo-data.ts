@@ -61,3 +61,28 @@ export const demoReportItems = [
     created_at: new Date('2026-04-11T19:34:00Z').toISOString(),
   },
 ];
+
+export const demoCommunity = {
+  id: 'demo-community',
+  name: 'Demo Community',
+  icon: '🌿',
+  member_count: 12,
+};
+
+export const demoCommunityMembers = [
+  {
+    id: 'demo-user-1',
+    display_name: 'Ava Green',
+    role: 'admin',
+  },
+  {
+    id: 'demo-user-2',
+    display_name: 'Noah Rivers',
+    role: 'moderator',
+  },
+  {
+    id: 'demo-user-3',
+    display_name: 'Mia Woods',
+    role: 'member',
+  },
+];

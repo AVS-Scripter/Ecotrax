@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { demoCommunity, demoCommunityMembers } from '@/lib/demo-data';
 
 export default function CommunityPageWrapper() {
   const { user, loading, communityId, isOnboarded } = useAuth();
@@ -23,16 +24,7 @@ export default function CommunityPageWrapper() {
   }
 
   if (authBlocked && demoMode) {
-    return (
-      <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto space-y-6 text-center pt-32">
-        <h1 className="text-3xl font-headline font-bold">Community Hub Demo</h1>
-        <p className="text-muted-foreground">This is currently a work in progress and will be released shortly. Until then, please wait patiently. Thank you.</p>
-        <div className="text-6xl">🙏</div>
-        <Button variant="outline" className="mt-6 neon-glow rounded-xl" onClick={() => router.push('/community')}>
-          Exit Demo
-        </Button>
-      </div>
-    );
+    return <CommunityHub demoMode />;
   }
 
   if (authBlocked) {
@@ -55,22 +47,29 @@ export default function CommunityPageWrapper() {
   );
 }
 
-function CommunityHub() {
+function CommunityHub({ demoMode }: { demoMode?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queriedId = searchParams.get('id');
   const { user, profile, communityId: userCommunityId } = useAuth();
   
-  const activeId = queriedId || userCommunityId;
+  const activeId = queriedId || userCommunityId || (demoMode ? demoCommunity.id : null);
 
   const [community, setCommunity] = useState<any | null>(null);
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<Array<{ id?: string; user_id?: string; role?: string; display_name?: string }>>([]);
   const [loading, setLoading] = useState(true);
 
-  const currentUserMember = members.find(m => m.id === user?.id || m.user_id === user?.id);
+  const currentUserMember = members.find((m) => (m as any).id === user?.id || (m as any).user_id === user?.id);
   const isAdmin = currentUserMember?.role === 'admin';
 
   useEffect(() => {
+    if (demoMode) {
+      setCommunity(demoCommunity);
+      setMembers(demoCommunityMembers);
+      setLoading(false);
+      return;
+    }
+
     if (!activeId) {
       setLoading(false);
       return;
@@ -101,7 +100,7 @@ function CommunityHub() {
     };
 
     loadData();
-  }, [activeId]);
+  }, [activeId, demoMode]);
 
   const handleLeave = async () => {
     if (!activeId || !user) return;
@@ -185,7 +184,7 @@ function CommunityHub() {
                     <div key={member.id} className="flex items-center justify-between p-4 hover:bg-white/5 transition-colors group">
                         <div className="flex items-center gap-4">
                             <Avatar className="border border-white/10">
-                                <AvatarFallback className="bg-primary/20 text-primary">{member.displayName[0]}</AvatarFallback>
+                                <AvatarFallback className="bg-primary/20 text-primary">{member.display_name?.[0] || '?'}</AvatarFallback>
                             </Avatar>
                             <div>
                                 <div className="text-sm font-bold flex items-center gap-2">
