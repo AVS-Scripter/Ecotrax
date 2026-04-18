@@ -110,10 +110,10 @@ export default function Dashboard() {
       return (
         <div className="pt-24 pb-12 px-6 max-w-7xl mx-auto space-y-8">
           <div className="rounded-3xl border border-primary/10 bg-primary/5 p-4 text-sm text-primary flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <span>Demo mode — sample data only. Real actions require signing in and joining a community.</span>
-            <Button variant="outline" size="sm" onClick={() => router.push('/dashboard')}>
+            <span>Sample data only. Real actions require signing in and joining a community.</span>
+            {/* <Button variant="outline" size="sm" onClick={() => router.push('/dashboard')}>
               Exit Demo
-            </Button>
+            </Button> */}
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -144,7 +144,7 @@ export default function Dashboard() {
             <Card className="lg:col-span-2 glass border-white/5 rounded-3xl overflow-hidden">
               <CardHeader>
                 <CardTitle>Reports Frequency</CardTitle>
-                <CardDescription>Monthly growth of incident reports submitted in the demo community.</CardDescription>
+                <CardDescription>Monthly growth of incident reports submitted in the community.</CardDescription>
               </CardHeader>
               <CardContent className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -168,7 +168,7 @@ export default function Dashboard() {
             <Card className="glass border-white/5 rounded-3xl overflow-hidden">
               <CardHeader>
                 <CardTitle>Issue Types</CardTitle>
-                <CardDescription>Distribution of demo community reports.</CardDescription>
+                <CardDescription>Distribution of community reports.</CardDescription>
               </CardHeader>
               <CardContent className="h-[300px] flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
@@ -197,7 +197,7 @@ export default function Dashboard() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Recent Reports</CardTitle>
-                <CardDescription>Demo reports from the example community.</CardDescription>
+                <CardDescription>Reports from the example community.</CardDescription>
               </div>
               <Button variant="ghost" className="text-primary hover:bg-primary/10" onClick={() => router.push('/report?demo=true')}>
                 View Reports

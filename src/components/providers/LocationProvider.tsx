@@ -95,8 +95,17 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
           resolve(coords);
         },
         (error) => {
-          console.error("Geolocation failed:", error);
+          console.error("Geolocation failed:", {
+            code: error?.code,
+            message: error?.message,
+            error
+          });
           resolve(null);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 minutes
         }
       );
     });

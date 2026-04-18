@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Leaf, Mail, Lock, ArrowRight, Chrome } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { signIn } from '@/lib/auth';
+import { signIn, signInWithGoogle } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
@@ -45,16 +45,12 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     try {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: `${window.location.origin}/dashboard`
-            }
-        });
-        if (error) throw error;
+      setLoading(true);
+      await signInWithGoogle(`${window.location.origin}/`);
     } catch (error: any) {
       console.error("Error signing in with Google:", error);
-      alert(`Google Sign-In Error: ${error.message}`);
+      setError(error.message || 'Failed to sign in with Google');
+      setLoading(false);
     }
   };
 
@@ -113,11 +109,12 @@ export default function LoginPage() {
           <div>
             <Button 
               type="button"
+              disabled={loading}
               variant="outline" 
               onClick={handleGoogleSignIn}
               className="w-full rounded-2xl h-12 glass border-white/5 gap-2 hover:bg-white/5 transition-all active:scale-[0.98]"
             >
-              <Chrome className="w-4 h-4" /> Sign in with Google
+              <Chrome className="w-4 h-4" /> {loading ? 'Signing In...' : 'Sign in with Google'}
             </Button>
           </div>
 

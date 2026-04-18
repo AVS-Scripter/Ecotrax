@@ -98,7 +98,7 @@ function DemoReportPageContent({ onExit }: { onExit: () => void }) {
           setStoredReports(parsed);
         }
       } catch (error) {
-        console.error('Failed to load demo reports', error);
+        console.error('Failed to load reports', error);
       }
     }
   }, []);
@@ -141,8 +141,8 @@ function DemoReportPageContent({ onExit }: { onExit: () => void }) {
     setFormValues({ name: '', issueType: 'air', description: '', location: '' });
 
     toast({
-      title: 'Demo report created',
-      description: 'Your report was added to the local demo view.',
+      title: 'report created',
+      description: 'Your report was added.',
     });
   };
 
@@ -155,27 +155,27 @@ function DemoReportPageContent({ onExit }: { onExit: () => void }) {
     <div className="pt-24 pb-24 px-4 md:px-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold font-headline">Reports Demo Mode</h1>
-          <p className="text-muted-foreground">This demo view shows sample reports and local-only creation. No community membership is required.</p>
+          <h1 className="text-3xl md:text-4xl font-bold font-headline">Reports</h1>
+          <p className="text-muted-foreground">Welcome to the reports page. Here you will be able to see the report made by community members.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={onExit} className="rounded-full">
+          {/* <Button variant="outline" onClick={onExit} className="rounded-full">
             Exit Demo
-          </Button>
+          </Button> */}
           <Button onClick={() => setIsModalOpen(true)} variant="default" className="rounded-full px-4 py-2 neon-glow">
             + New Report
           </Button>
         </div>
       </div>
 
-      <div className="rounded-3xl border border-primary/10 bg-primary/5 p-4 text-sm text-primary">
+      {/* <div className="rounded-3xl border border-primary/10 bg-primary/5 p-4 text-sm text-primary">
         Demo reports are stored locally in this browser tab only and will reset when the tab closes.
-      </div>
+      </div> */}
 
       <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 mt-6">
         {filteredReports.length === 0 ? (
           <div className="glass p-6 rounded-3xl border border-white/10 text-center col-span-full py-12">
-            <p className="text-muted-foreground">No demo reports found for this filter.</p>
+            <p className="text-muted-foreground">No reports found for this filter.</p>
           </div>
         ) : (
           filteredReports.map((report) => (
@@ -205,7 +205,7 @@ function DemoReportPageContent({ onExit }: { onExit: () => void }) {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6" onClick={() => setIsModalOpen(false)}>
           <div className="bg-card w-full max-w-3xl rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 animate-in zoom-in-90 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold">Create Demo Report</h2>
+              <h2 className="text-2xl font-bold">Create Report</h2>
               <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)}>
                 ✕
               </Button>
@@ -238,7 +238,7 @@ function DemoReportPageContent({ onExit }: { onExit: () => void }) {
                 <Textarea value={formValues.description} onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))} placeholder="Describe the issue in detail..." className="bg-white/5 border-white/10 rounded-xl min-h-[120px]" />
               </div>
               <Button className="w-full rounded-xl py-3 neon-glow" onClick={handleCreateDemoReport} disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Add Demo Report'}
+                {isSubmitting ? 'Creating...' : 'Add Report'}
               </Button>
             </div>
           </div>

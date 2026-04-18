@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Leaf, Mail, Lock, User, Chrome } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { signUp } from '@/lib/auth';
+import { signUp, signInWithGoogle } from '@/lib/auth';
 import { syncUserProfile } from '@/lib/user';
 import { supabase } from '@/lib/supabase';
 
@@ -38,18 +38,14 @@ export default function SignupPage() {
   };
 
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignUp = async () => {
     try {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: `${window.location.origin}/dashboard`
-            }
-        });
-        if (error) throw error;
+      setLoading(true);
+      await signInWithGoogle(`${window.location.origin}/`);
     } catch (error: any) {
-      console.error("Error signing in with Google:", error);
-      alert(`Google Sign-In Error: ${error.message}`);
+      console.error("Error signing up with Google:", error);
+      setError(error.message || 'Failed to sign up with Google');
+      setLoading(false);
     }
   };
 
@@ -113,11 +109,12 @@ export default function SignupPage() {
           <div>
             <Button 
               type="button"
+              disabled={loading}
               variant="outline" 
-              onClick={handleGoogleSignIn}
+              onClick={handleGoogleSignUp}
               className="w-full rounded-2xl h-12 glass border-white/5 gap-2 hover:bg-white/5 transition-all active:scale-[0.98]"
             >
-              <Chrome className="w-4 h-4" /> Sign up with Google
+              <Chrome className="w-4 h-4" /> {loading ? 'Signing Up...' : 'Sign up with Google'}
             </Button>
           </div>
 

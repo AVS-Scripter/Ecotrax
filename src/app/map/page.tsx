@@ -68,9 +68,50 @@ function MapContent() {
         .not('latitude', 'is', null)
         .not('longitude', 'is', null);
 
+      // Hardcoded demo reports within 50m radius of given location
+      const defaultCenter = { lat: 26.246363916666667, lng: 78.17409746575342 };
+      const metersToLatitude = 1 / 111000; // 1 meter ≈ 0.000009 degrees latitude
+      const hardcodedReports = [
+        {
+          id: 'demo-air-1',
+          name: 'Air Quality Alert',
+          issue_type: 'air',
+          description: 'High pollution levels detected in the area',
+          location: 'Local Area',
+          latitude: defaultCenter.lat + (50 * metersToLatitude),
+          longitude: defaultCenter.lng + (50 * metersToLatitude),
+          status: 'active',
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: 'demo-noise-1',
+          name: 'Excessive Noise Complaint',
+          issue_type: 'noise',
+          description: 'Construction noise reported during early morning hours',
+          location: 'Local Area',
+          latitude: defaultCenter.lat + (-50 * metersToLatitude),
+          longitude: defaultCenter.lng + (50 * metersToLatitude),
+          status: 'active',
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: 'demo-trash-1',
+          name: 'Trash Accumulation',
+          issue_type: 'garbage',
+          description: 'Significant waste accumulation along the roadside',
+          location: 'Local Area',
+          latitude: defaultCenter.lat + (30 * metersToLatitude),
+          longitude: defaultCenter.lng + (-80 * metersToLatitude),
+          status: 'active',
+          created_at: new Date().toISOString(),
+        },
+      ];
+
+      let allReports = hardcodedReports;
       if (!error && data) {
-        setReports(data);
+        allReports = [...hardcodedReports, ...data];
       }
+      setReports(allReports);
     };
 
     fetchReports();
@@ -138,15 +179,15 @@ function MapContent() {
       <div className="absolute top-24 left-6 z-10 w-80 space-y-4 pointer-events-none">
         <div className="glass p-5 rounded-2xl border border-white/5 space-y-5 shadow-2xl pointer-events-auto">
           <div className="space-y-1">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary/80 ml-1">Live Feed</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-primary ml-1">Live Feed</h2>
             <div className="relative">
-              <Input placeholder="Search locations..." className="bg-white/5 border-white/10 rounded-xl pl-10 h-11 focus:ring-primary/30" />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Search locations..." className="bg-white/10 border-white/20 rounded-xl pl-10 h-11 focus:ring-primary/50 text-foreground placeholder:text-foreground/50" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/70" />
             </div>
           </div>
           
           <div className="space-y-1">
-            <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Filter Issues</h2>
+            <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/70 ml-1">Filter Issues</h2>
             <div className="flex flex-wrap gap-2">
               {['all', 'air', 'water', 'garbage', 'noise'].map(f => (
                 <Badge 
@@ -182,7 +223,7 @@ function MapContent() {
               </div>
               <Button variant="ghost" size="icon" onClick={() => setSelectedReport(null)} className="h-6 w-6 rounded-full">&times;</Button>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+            <p className="text-sm text-foreground/80 leading-relaxed mb-6">
               {selectedReport.description}
               <br />
               <span className="text-primary font-bold mt-2 block text-xs">Location: {selectedReport.location}</span>
