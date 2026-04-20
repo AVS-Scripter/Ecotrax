@@ -368,11 +368,15 @@ export default function ReportPage() {
                     <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
                   </label>
                   {preview && (
-                    <div className="relative rounded-xl overflow-hidden aspect-video border border-white/10">
-                      <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-                      <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 rounded-full" onClick={() => { setPreview(null); setImageFile(null); }}>
-                        <X className="w-4 h-4" />
-                      </Button>
+                    <div className="flex justify-center pt-2">
+                      <div className="relative rounded-xl overflow-hidden h-32 w-full max-w-[200px] border border-white/10 group">
+                        <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Button type="button" variant="destructive" size="icon" className="rounded-full h-8 w-8" onClick={() => { setPreview(null); setImageFile(null); }}>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

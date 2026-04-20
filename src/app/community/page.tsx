@@ -151,7 +151,13 @@ export default function CommunityPage() {
           
           <div className="space-y-4">
             {loading ? (
-              [1,2,3].map(i => <div key={i} className="glass p-6 rounded-3xl border border-white/5 animate-pulse h-40" />)
+              <div className="glass w-full rounded-3xl border border-white/5 animate-pulse h-24 flex items-center px-8">
+                <div className="w-12 h-12 rounded-xl bg-white/5 mr-6" />
+                <div className="space-y-3 flex-1">
+                  <div className="h-4 bg-white/5 rounded w-1/4" />
+                  <div className="h-3 bg-white/5 rounded w-1/2" />
+                </div>
+              </div>
             ) : (
               displayActivities.map((challenge) => {
                 const IconComponent = iconMap[challenge.category] || Zap;
