@@ -23,18 +23,7 @@ export default function LoginPage() {
     setError('');
     try {
       await signIn(email, password);
-      
-      // Check profile via Supabase
-      const { data: profile } = await supabase
-        .from('users')
-        .select('has_joined_community')
-        .single();
-
-      if (profile?.has_joined_community) {
-        router.push('/dashboard');
-      } else {
-        router.push('/onboarding');
-      }
+      router.push('/dashboard');
     } catch (err: any) {
       console.error("Error signing in:", err);
       setError(err.message || 'Invalid email or password.');
@@ -46,7 +35,7 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      await signInWithGoogle(`${window.location.origin}/`);
+      await signInWithGoogle();
     } catch (error: any) {
       console.error("Error signing in with Google:", error);
       setError(error.message || 'Failed to sign in with Google');

@@ -8,7 +8,6 @@ import { Leaf, Mail, Lock, User, Chrome } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { signUp, signInWithGoogle } from '@/lib/auth';
-import { syncUserProfile } from '@/lib/user';
 import { supabase } from '@/lib/supabase';
 
 export default function SignupPage() {
@@ -24,11 +23,8 @@ export default function SignupPage() {
     setLoading(true);
     setError('');
     try {
-      const data = await signUp(email, password);
-      if (data?.user) {
-        await syncUserProfile(data.user, name);
-      }
-      router.push('/onboarding');
+      await signUp(email, password, name);
+      router.push('/dashboard');
     } catch (err: any) {
       console.error("Error signing up:", err);
       setError(err.message || 'An error occurred during sign up.');
@@ -41,7 +37,7 @@ export default function SignupPage() {
   const handleGoogleSignUp = async () => {
     try {
       setLoading(true);
-      await signInWithGoogle(`${window.location.origin}/`);
+      await signInWithGoogle();
     } catch (error: any) {
       console.error("Error signing up with Google:", error);
       setError(error.message || 'Failed to sign up with Google');

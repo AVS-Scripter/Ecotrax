@@ -23,10 +23,10 @@ import { useLocation } from '@/components/providers/LocationProvider';
 // Types for our reports
 interface Report {
   id: string;
-  name: string;
-  issue_type: string;
+  title: string;
+  category: string;
   description: string;
-  location: string;
+  location_text: string;
   latitude: number | null;
   longitude: number | null;
   status: string;
@@ -68,50 +68,9 @@ function MapContent() {
         .not('latitude', 'is', null)
         .not('longitude', 'is', null);
 
-      // Hardcoded demo reports within 50m radius of given location
-      const defaultCenter = { lat: 26.246363916666667, lng: 78.17409746575342 };
-      const metersToLatitude = 1 / 111000; // 1 meter ≈ 0.000009 degrees latitude
-      const hardcodedReports = [
-        {
-          id: 'demo-air-1',
-          name: 'Air Quality Alert',
-          issue_type: 'air',
-          description: 'High pollution levels detected in the area',
-          location: 'Local Area',
-          latitude: defaultCenter.lat + (50 * metersToLatitude),
-          longitude: defaultCenter.lng + (50 * metersToLatitude),
-          status: 'active',
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: 'demo-noise-1',
-          name: 'Excessive Noise Complaint',
-          issue_type: 'noise',
-          description: 'Construction noise reported during early morning hours',
-          location: 'Local Area',
-          latitude: defaultCenter.lat + (-50 * metersToLatitude),
-          longitude: defaultCenter.lng + (50 * metersToLatitude),
-          status: 'active',
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: 'demo-trash-1',
-          name: 'Trash Accumulation',
-          issue_type: 'garbage',
-          description: 'Significant waste accumulation along the roadside',
-          location: 'Local Area',
-          latitude: defaultCenter.lat + (30 * metersToLatitude),
-          longitude: defaultCenter.lng + (-80 * metersToLatitude),
-          status: 'active',
-          created_at: new Date().toISOString(),
-        },
-      ];
-
-      let allReports = hardcodedReports;
       if (!error && data) {
-        allReports = [...hardcodedReports, ...data];
+        setReports(data as unknown as Report[]);
       }
-      setReports(allReports);
     };
 
     fetchReports();
@@ -169,7 +128,7 @@ function MapContent() {
 
   const filteredReports = useMemo(() => {
     return reports.filter(report => 
-      activeFilter === 'all' || report.issue_type === activeFilter
+      activeFilter === 'all' || report.category === activeFilter
     );
   }, [reports, activeFilter]);
 
@@ -211,14 +170,14 @@ function MapContent() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                  {selectedReport.issue_type === 'air' && <Wind className="w-5 h-5 text-blue-400" />}
-                  {selectedReport.issue_type === 'water' && <Droplets className="w-5 h-5 text-teal-400" />}
-                  {selectedReport.issue_type === 'garbage' && <Trash2 className="w-5 h-5 text-orange-400" />}
-                  {selectedReport.issue_type === 'noise' && <Volume2 className="w-5 h-5 text-purple-400" />}
+                  {selectedReport.category === 'air' && <Wind className="w-5 h-5 text-blue-400" />}
+                  {selectedReport.category === 'water' && <Droplets className="w-5 h-5 text-teal-400" />}
+                  {selectedReport.category === 'garbage' && <Trash2 className="w-5 h-5 text-orange-400" />}
+                  {selectedReport.category === 'noise' && <Volume2 className="w-5 h-5 text-purple-400" />}
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground uppercase font-bold tracking-widest">{selectedReport.issue_type}</div>
-                  <div className="font-bold line-clamp-1">{selectedReport.name}</div>
+                  <div className="text-xs text-muted-foreground uppercase font-bold tracking-widest">{selectedReport.category}</div>
+                  <div className="font-bold line-clamp-1">{selectedReport.title}</div>
                 </div>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setSelectedReport(null)} className="h-6 w-6 rounded-full">&times;</Button>
@@ -226,7 +185,7 @@ function MapContent() {
             <p className="text-sm text-foreground/80 leading-relaxed mb-6">
               {selectedReport.description}
               <br />
-              <span className="text-primary font-bold mt-2 block text-xs">Location: {selectedReport.location}</span>
+              <span className="text-primary font-bold mt-2 block text-xs">Location: {selectedReport.location_text}</span>
             </p>
             <div className="flex gap-2">
               <Button variant="default" className="flex-1 rounded-xl h-10 text-xs font-bold uppercase tracking-wider">View Full Details</Button>
@@ -271,10 +230,10 @@ function MapContent() {
                 "p-2.5 rounded-2xl border-2 border-white/20 shadow-2xl transition-all duration-300 hover:scale-110 cursor-pointer",
                 selectedReport?.id === report.id ? "scale-125 bg-white text-background neon-glow border-primary" : "bg-background/80 backdrop-blur-md"
               )}>
-                {report.issue_type === 'air' && <Wind className="w-5 h-5 text-blue-400" />}
-                {report.issue_type === 'water' && <Droplets className="w-5 h-5 text-teal-400" />}
-                {report.issue_type === 'garbage' && <Trash2 className="w-5 h-5 text-orange-400" />}
-                {report.issue_type === 'noise' && <Volume2 className="w-5 h-5 text-purple-400" />}
+                {report.category === 'air' && <Wind className="w-5 h-5 text-blue-400" />}
+                {report.category === 'water' && <Droplets className="w-5 h-5 text-teal-400" />}
+                {report.category === 'garbage' && <Trash2 className="w-5 h-5 text-orange-400" />}
+                {report.category === 'noise' && <Volume2 className="w-5 h-5 text-purple-400" />}
               </div>
             </AdvancedMarker>
           ))}
