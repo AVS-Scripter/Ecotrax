@@ -3,9 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { getCommunity, Community } from '@/lib/db/communities';
-import { getMembers, Member, updateMemberRole } from '@/lib/db/members';
-import { getInvitesForCommunity, Invite, createInvite } from '@/lib/db/invites';
+import { supabase } from '@/lib/supabase';
+
 import { Button } from '@/components/ui/button';
 import { Users, Link as LinkIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -18,9 +17,9 @@ export default function AdminPanel() {
   
   const activeId = queriedId || userCommunityId;
 
-  const [community, setCommunity] = useState<Community | null>(null);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [invites, setInvites] = useState<Invite[]>([]);
+  const [community, setCommunity] = useState<any | null>(null);
+  const [members, setMembers] = useState<any[]>([]);
+  const [invites, setInvites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreatingInvite, setIsCreatingInvite] = useState(false);
 
@@ -32,21 +31,40 @@ export default function AdminPanel() {
     }
 
     const loadData = async () => {
-      const comm = await getCommunity(activeId);
-      setCommunity(comm);
-      if (comm) {
-        const mems = await getMembers(activeId);
-        setMembers(mems);
-
-        // Security check: must be admin to view
-        const currentMember = mems.find(m => m.id === user.uid);
-        if (currentMember?.role !== 'admin') {
-            router.push(`/community?id=${activeId}`);
-            return;
+      // Fetch community info
+      const { data: commData } = await supabase
+        .from('communities')
+        .select('*')
+        .eq('id', activeId)
+        .maybeSingle();
+      
+      if (commData) {
+        setCommunity(commData);
+        
+        // Fetch members
+        const { data: memsData } = await supabase
+          .from('community_members')
+          .select('*')
+          .eq('community_id', activeId);
+          
+        if (memsData) {
+          setMembers(memsData);
+          
+          // Security check: must be admin to view
+          const currentMember = memsData.find(m => m.user_id === user.id);
+          if (currentMember?.role !== 'admin') {
+              router.push(`/community?id=${activeId}`);
+              return;
+          }
         }
 
-        const invs = await getInvitesForCommunity(activeId);
-        setInvites(invs);
+        // Fetch invites
+        const { data: invsData } = await supabase
+          .from('invites')
+          .select('*')
+          .eq('community_id', activeId);
+          
+        if (invsData) setInvites(invsData);
       }
       setLoading(false);
     };
@@ -57,7 +75,12 @@ export default function AdminPanel() {
   const handleRoleChange = async (targetId: string, newRole: 'admin' | 'moderator' | 'member') => {
       if(!activeId || !user) return;
       try {
-          await updateMemberRole(activeId, targetId, newRole, user.uid);
+          const { error } = await supabase
+            .from('community_members')
+            .update({ role: newRole })
+            .eq('id', targetId);
+          if (error) throw error;
+          
           setMembers(members.map(m => m.id === targetId ? { ...m, role: newRole } : m));
       } catch (e: any) {
           alert(e.message);
@@ -68,15 +91,25 @@ export default function AdminPanel() {
       if (!activeId || !user || !community) return;
       setIsCreatingInvite(true);
       try {
-          await createInvite(activeId, community.name, user.uid, null, 7);
-          const invs = await getInvitesForCommunity(activeId);
-          setInvites(invs);
+          const { error } = await supabase.rpc('create_invite', {
+              p_community_id: activeId,
+              p_expiry_days: 7
+          });
+          if (error) throw error;
+          
+          // Refresh invites
+          const { data: invsData } = await supabase
+            .from('invites')
+            .select('*')
+            .eq('community_id', activeId);
+          if (invsData) setInvites(invsData);
       } catch(e: any) {
           alert(e.message);
       } finally {
           setIsCreatingInvite(false);
       }
   }
+
 
   const copyToClipboard = (code: string) => {
       const url = `${window.location.origin}/join?code=${code}`;
@@ -105,7 +138,7 @@ export default function AdminPanel() {
                     {members.map(member => (
                         <div key={member.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-2 border-b border-white/5 last:border-0">
                             <div>
-                                <div className="font-bold">{member.displayName}</div>
+                                <div className="font-bold">{member.display_name}</div>
                                 <div className="text-xs text-muted-foreground">{member.role}</div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -113,7 +146,7 @@ export default function AdminPanel() {
                                     className="bg-white/5 border border-white/10 rounded-lg text-sm p-1"
                                     value={member.role}
                                     onChange={(e) => handleRoleChange(member.id!, e.target.value as any)}
-                                    disabled={member.id === user?.uid}
+                                    disabled={member.user_id === user?.id}
                                 >
                                     <option value="member">Member</option>
                                     <option value="moderator">Moderator</option>
@@ -141,7 +174,7 @@ export default function AdminPanel() {
                                 <div>
                                     <div className="font-bold font-mono tracking-widest text-primary">{invite.id}</div>
                                     <div className="text-xs text-muted-foreground">
-                                        Uses: {invite.usedCount} / {invite.maxUses === null ? '∞' : invite.maxUses}
+                                        Uses: {invite.used_count || 0} / {invite.max_uses === null ? '∞' : invite.max_uses}
                                     </div>
                                 </div>
                                 <Button size="sm" variant="outline" onClick={() => copyToClipboard(invite.id!)} className="rounded-xl">
@@ -151,6 +184,7 @@ export default function AdminPanel() {
                         ))
                     )}
                  </div>
+
             </div>
         </div>
     </div>

@@ -4,7 +4,8 @@ import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Toaster } from '@/components/ui/toaster';
-import { AuthProvider } from '@/components/providers/AuthProvider';
+import { AuthProvider } from '@/hooks/useAuth';
+import { LocationProvider } from '@/components/providers/LocationProvider';
 
 export const metadata: Metadata = {
   title: 'Ecotrax | Environmental Monitoring Platform',
@@ -26,12 +27,14 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased min-h-screen flex flex-col bg-grid-white" suppressHydrationWarning>
         <AuthProvider>
-          <Navbar />
-          <main className="flex-1">
-            {children}
-          </main>
-          <Footer />
-          <Toaster />
+          <LocationProvider>
+            <Navbar />
+            <main className="flex-1">
+              {children}
+            </main>
+            <Footer />
+            <Toaster />
+          </LocationProvider>
         </AuthProvider>
       </body>
     </html>

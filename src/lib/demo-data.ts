@@ -1,0 +1,88 @@
+export const demoDashboardStats = {
+  totalReports: 128,
+  monitoredZones: 16,
+  totalUsers: 4320,
+  lifetimeVisits: 92184,
+  monthlyReports: {
+    Jan: 8,
+    Feb: 14,
+    Mar: 24,
+    Apr: 29,
+    May: 34,
+    Jun: 27,
+    Jul: 36,
+    Aug: 42,
+    Sep: 48,
+    Oct: 52,
+    Nov: 61,
+    Dec: 68,
+  },
+};
+
+export const demoReportItems = [
+  {
+    id: 'demo-1',
+    name: 'Illegal Dumping at Riverbank',
+    issueType: 'garbage',
+    status: 'in-progress',
+    description: 'Large amounts of household waste and furniture dumped near the riverbank, creating a hazard for wildlife.',
+    location: 'Riverbank Park',
+    image_url: null,
+    created_at: new Date('2026-04-09T11:24:00Z').toISOString(),
+  },
+  {
+    id: 'demo-2',
+    name: 'Air Quality Alert',
+    issueType: 'air',
+    status: 'unresolved',
+    description: 'Smoke and industrial emissions detected in the western district, causing poor air quality this morning.',
+    location: 'Westside Industrial Zone',
+    image_url: null,
+    created_at: new Date('2026-04-12T14:12:00Z').toISOString(),
+  },
+  {
+    id: 'demo-3',
+    name: 'Storm Drain Blockage',
+    issueType: 'water',
+    status: 'resolved',
+    description: 'Storm drain clogged with debris and plastic waste after heavy rain. Local team cleared it.',
+    location: 'Oak Street & 5th Ave',
+    image_url: null,
+    created_at: new Date('2026-04-10T08:58:00Z').toISOString(),
+  },
+  {
+    id: 'demo-4',
+    name: 'Noise Complaint',
+    issueType: 'noise',
+    status: 'in-progress',
+    description: 'Construction noise continuing past permitted hours and disturbing residents.',
+    location: 'Harbor District',
+    image_url: null,
+    created_at: new Date('2026-04-11T19:34:00Z').toISOString(),
+  },
+];
+
+export const demoCommunity = {
+  id: 'demo-community',
+  name: 'Demo Community',
+  icon: '🌿',
+  member_count: 12,
+};
+
+export const demoCommunityMembers = [
+  {
+    id: 'demo-user-1',
+    display_name: 'Ava Green',
+    role: 'admin',
+  },
+  {
+    id: 'demo-user-2',
+    display_name: 'Noah Rivers',
+    role: 'moderator',
+  },
+  {
+    id: 'demo-user-3',
+    display_name: 'Mia Woods',
+    role: 'member',
+  },
+];

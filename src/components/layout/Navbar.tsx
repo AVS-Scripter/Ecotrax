@@ -7,8 +7,7 @@ import { usePathname } from 'next/navigation';
 import { Leaf, Menu, X, LayoutDashboard, Map as MapIcon, Users, FileText, LogIn, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { auth } from '@/lib/firebase';
-import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
+import { useAuth } from '@/hooks/useAuth';
 import { UserProfileModal } from './UserProfileModal';
 
 const navItems = [
@@ -23,31 +22,24 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const { user, profile, signOut } = useAuth();
   const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
-    
-    const unsubscribe = auth ? onAuthStateChanged(auth, (user) => {
-      setUser(user);
-    }) : () => {};
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      unsubscribe();
-    };
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const handleSignOut = async () => {
-    if (!auth) return;
     try {
-      await signOut(auth);
+      await signOut();
+      setIsOpen(false);
     } catch (error) {
       console.error("Error signing out:", error);
     }
   };
+
 
   return (
     <nav 
@@ -96,13 +88,13 @@ export function Navbar() {
                   onClick={() => setIsProfileModalOpen(true)}
                 >
                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border border-primary/30">
-                     {user.photoURL ? (
-                       <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
+                     {profile?.avatar_url ? (
+                       <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
                      ) : (
                        <User className="w-3 h-3 text-primary" />
                      )}
                    </div>
-                   <span className="text-xs font-medium max-w-[100px] truncate">{user.displayName || 'User'}</span>
+                   <span className="text-xs font-medium max-w-[100px] truncate">{profile?.username || user?.email?.split('@')[0] || 'User'}</span>
                 </div>
                 <Button onClick={handleSignOut} variant="ghost" size="sm" className="rounded-full gap-2 hover:bg-destructive/10 hover:text-destructive">
                   <LogOut className="w-4 h-4" /> Sign Out
@@ -151,14 +143,14 @@ export function Navbar() {
                   onClick={() => { setIsOpen(false); setIsProfileModalOpen(true); }}
                 >
                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
-                     {user.photoURL ? (
-                       <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
+                     {profile?.avatar_url ? (
+                       <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
                      ) : (
                        <User className="text-primary" />
                      )}
                    </div>
                    <div>
-                     <div className="font-bold">{user.displayName || 'User'}</div>
+                     <div className="font-bold">{profile?.username || user?.email?.split('@')[0] || 'User'}</div>
                      <div className="text-xs text-muted-foreground">{user.email}</div>
                    </div>
                 </div>

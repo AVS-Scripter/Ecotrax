@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
+  PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import { 
   TrendingUp, AlertCircle, CheckCircle2, FileText, 
@@ -13,76 +12,73 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { subscribeToGlobalStats, GlobalStats } from '@/lib/db/stats';
-import { subscribeToReports, Report } from '@/lib/db/reports';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { getReportStats, getReports } from '@/lib/reports';
+import { supabase } from '@/lib/supabase';
+import type { ReportWithProfile } from '@/lib/database.types';
+import { useAuth } from '@/hooks/useAuth';
 
-const COLORS = ['#00FF9F', '#0e915eff', '#67ffd4ff', '#77ac94d3'];
+const COLORS = ['#00FF9F', '#5AD8A7', '#1E4D40', '#42B883'];
 
 export default function Dashboard() {
-  const { user, loading, communityId, isOnboarded } = useAuth();
-  
-  const [stats, setStats] = useState<GlobalStats>({
-    totalReports: 0,
-    monitoredZones: 0,
-    totalUsers: 0,
-    lifetimeVisits: 0,
-    monthlyReports: { Jan: 0 } 
-  });
-
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const lineData = months.map(m => ({ 
-    name: m, 
-    reports: stats.monthlyReports ? (stats.monthlyReports[m] || 0) : 0 
-  }));
-  const [reports, setReports] = useState<Report[]>([]);
+  const { user } = useAuth();
+  const [stats, setStats] = useState({ total: 0, reported: 0, resolved: 0 });
+  const [recentReports, setRecentReports] = useState<ReportWithProfile[]>([]);
+  const [categoryData, setCategoryData] = useState<{ name: string; value: number }[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if(!communityId) return;
-    
-    const unsubStats = subscribeToGlobalStats(setStats);
-    const unsubReports = subscribeToReports(communityId, (data) => setReports(data.slice(0, 4)));
+    loadDashboardData();
+  }, []);
 
-    return () => {
-      unsubStats();
-      unsubReports();
-    };
-  }, [communityId]);
+  async function loadDashboardData() {
+    setLoading(true);
+    try {
+      const [statsData, recent] = await Promise.all([
+        getReportStats().catch(() => ({ total: 0, reported: 0, resolved: 0 })),
+        getReports({ limit: 5 }).catch(() => []),
+      ]);
 
-  if (loading) {
-    return <div className="pt-24 text-center">Loading...</div>;
+      setStats(statsData);
+      setRecentReports(recent);
+
+      // Get category breakdown
+      const categories = ['air', 'water', 'garbage', 'noise'];
+      const catCounts = await Promise.all(
+        categories.map(async (cat) => {
+          const { count } = await supabase
+            .from('reports')
+            .select('id', { count: 'exact', head: true })
+            .eq('category', cat);
+          return { name: cat.charAt(0).toUpperCase() + cat.slice(1), value: count || 0 };
+        })
+      );
+      setCategoryData(catCounts);
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  if (!user || !isOnboarded || !communityId) {
-    return (
-      <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto space-y-8 text-center pt-32">
-        <h1 className="text-3xl font-headline font-bold">Community Dashboard</h1>
-        <p className="text-muted-foreground">Sign in and join a community to view your community's reports and activity.</p>
-        {!user ? (
-            <Link href="/login">
-                <Button className="mt-4 neon-glow rounded-xl">Sign in to continue</Button>
-            </Link>
-        ) : (
-            <Link href="/onboarding">
-                <Button className="mt-4 neon-glow rounded-xl">Join a Community</Button>
-            </Link>
-        )}
-      </div>
-    );
-  }
+  const totalCatValue = categoryData.reduce((s, d) => s + d.value, 0) || 1;
 
-  const pieData = [
-    { name: 'Air', value: reports.filter(r => r.issueType === 'air').length || 1 },
-    { name: 'Water', value: reports.filter(r => r.issueType === 'water').length || 1 },
-    { name: 'Garbage', value: reports.filter(r => r.issueType === 'garbage').length || 1 },
-    { name: 'Noise', value: reports.filter(r => r.issueType === 'noise').length || 1 },
+  // Fallback line chart data (will use real monthly data once enough reports exist)
+  const lineData = [
+    { name: 'Jan', reports: 0 },
+    { name: 'Feb', reports: 0 },
+    { name: 'Mar', reports: 0 },
+    { name: 'Apr', reports: stats.total },
+    { name: 'May', reports: 0 },
+    { name: 'Jun', reports: 0 },
   ];
+
+  const resolutionRate = stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0;
 
   return (
     <div className="pt-24 pb-12 px-6 max-w-7xl mx-auto space-y-8">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-headline font-bold tracking-tight">Community Dashboard</h1>
+          <h1 className="text-3xl font-headline font-bold tracking-tight">Environmental Dashboard</h1>
           <p className="text-muted-foreground">Real-time metrics and historical trends across monitored zones.</p>
         </div>
         <div className="flex items-center gap-2 text-xs bg-primary/10 text-primary px-3 py-1 rounded-full font-bold uppercase tracking-wider border border-primary/20">
@@ -94,17 +90,17 @@ export default function Dashboard() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { title: "Total Reports", value: stats.totalReports.toLocaleString(), icon: FileText, change: "+12%", up: true },
-          { title: "Active Issues", value: reports.filter(r => r.status !== 'resolved').length.toString(), icon: AlertCircle, change: "Live", up: true },
-          { title: "Total Users", value: stats.totalUsers.toLocaleString(), icon: CheckCircle2, change: "+5%", up: true },
-          { title: "Lifetime Visits", value: stats.lifetimeVisits.toLocaleString(), icon: TrendingUp, change: "New", up: true },
+          { title: "Total Reports", value: loading ? '...' : stats.total.toLocaleString(), icon: FileText, change: `${stats.total}`, up: true },
+          { title: "Active Issues", value: loading ? '...' : stats.reported.toLocaleString(), icon: AlertCircle, change: `${stats.reported}`, up: false },
+          { title: "Resolved", value: loading ? '...' : stats.resolved.toLocaleString(), icon: CheckCircle2, change: `${resolutionRate}%`, up: true },
+          { title: "Resolution Rate", value: loading ? '...' : `${resolutionRate}%`, icon: TrendingUp, change: "live", up: true },
         ].map((stat, i) => (
           <div key={i} className="glass p-6 rounded-2xl border border-white/5 space-y-4 hover:border-primary/20 transition-all">
             <div className="flex items-center justify-between">
               <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
                 <stat.icon className="w-5 h-5 text-primary" />
               </div>
-              <div className={cn("flex items-center gap-1 text-xs font-bold", stat.up ? 'text-primary' : 'text-red-400')}>
+              <div className={cn("flex items-center gap-1 text-xs font-bold", stat.up ? 'text-primary' : 'text-orange-400')}>
                 {stat.change} {stat.up ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
               </div>
             </div>
@@ -164,7 +160,7 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={pieData}
+                  data={categoryData.length > 0 ? categoryData : [{ name: 'No data', value: 1 }]}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -172,7 +168,7 @@ export default function Dashboard() {
                   paddingAngle={5}
                   dataKey="value"
                 >
-                  {pieData.map((entry, index) => (
+                  {(categoryData.length > 0 ? categoryData : [{ name: 'No data', value: 1 }]).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -184,10 +180,10 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </CardContent>
           <div className="px-6 pb-6 grid grid-cols-2 gap-4">
-            {pieData.map((d, i) => (
+            {categoryData.map((d, i) => (
               <div key={i} className="flex items-center gap-2 text-xs">
                 <div className="w-2 h-2 rounded-full" style={{backgroundColor: COLORS[i]}} />
-                <span className="text-muted-foreground">{d.name}</span>
+                <span className="text-muted-foreground">{d.name} ({Math.round(d.value/totalCatValue*100)}%)</span>
               </div>
             ))}
           </div>
@@ -199,41 +195,40 @@ export default function Dashboard() {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Recent Reports</CardTitle>
-            <CardDescription>Most recent environmental incidents logged globally.</CardDescription>
+            <CardDescription>Most recent environmental incidents logged by the community.</CardDescription>
           </div>
-          <Link href="/report">
-            <Button variant="ghost" className="text-primary hover:bg-primary/10">View All</Button>
-          </Link>
+          <Button variant="ghost" className="text-primary hover:bg-primary/10" onClick={() => window.location.href = '/report'}>View All</Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {reports.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">No recent reports found.</div>
+            {loading ? (
+              [1,2,3].map(i => <div key={i} className="h-16 rounded-2xl bg-white/5 animate-pulse" />)
+            ) : recentReports.length === 0 ? (
+              <div className="text-center text-muted-foreground py-8">No reports yet. Be the first to report an issue!</div>
             ) : (
-              reports.map((report) => (
-                <div key={report.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+              recentReports.map((report) => (
+                <div key={report.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-pointer" onClick={() => window.location.href = `/report`}>
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center">
-                      {report.issueType === 'air' && <Wind className="w-5 h-5 text-blue-400" />}
-                      {report.issueType === 'water' && <Droplets className="w-5 h-5 text-teal-400" />}
-                      {report.issueType === 'garbage' && <Trash2 className="w-5 h-5 text-orange-400" />}
-                      {report.issueType === 'noise' && <Volume2 className="w-5 h-5 text-purple-400" />}
+                    <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center border border-white/5">
+                      {report.category === 'air' && <Wind className="w-5 h-5 text-blue-400" />}
+                      {report.category === 'water' && <Droplets className="w-5 h-5 text-teal-400" />}
+                      {report.category === 'garbage' && <Trash2 className="w-5 h-5 text-orange-400" />}
+                      {report.category === 'noise' && <Volume2 className="w-5 h-5 text-purple-400" />}
                     </div>
                     <div>
-                      <div className="font-bold capitalize">{report.issueType} Incident</div>
-                      <div className="text-xs text-muted-foreground">{report.location}</div>
+                      <div className="font-bold line-clamp-1">{report.title}</div>
+                      <div className="text-xs text-muted-foreground">{report.location_text}</div>
                     </div>
                   </div>
                   <div className="text-right">
                     <div className={cn(
                       "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider inline-block mb-1",
-                      report.status === 'resolved' ? 'bg-primary/20 text-primary' : 
-                      report.status === 'in-progress' ? 'bg-blue-400/20 text-blue-400' : 'bg-orange-400/20 text-orange-400'
+                      report.status === 'Resolved' || report.status === 'resolved' ? 'bg-primary/20 text-primary' : 'bg-orange-400/20 text-orange-400'
                     )}>
-                      {report.status}
+                      {report.status === 'Resolved' || report.status === 'resolved' ? 'Resolved' : 'Reported'}
                     </div>
                     <div className="text-[10px] text-muted-foreground uppercase tracking-widest">
-                      {report.createdAt ? new Date(report.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}
+                      {new Date(report.created_at).toLocaleDateString()}
                     </div>
                   </div>
                 </div>

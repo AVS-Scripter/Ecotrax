@@ -7,9 +7,8 @@ import { useRouter } from 'next/navigation';
 import { Leaf, Mail, Lock, User, Chrome } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { signInWithPopup, createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, googleProvider } from '@/lib/firebase';
-import { createOrUpdateUserProfile } from '@/lib/db/users';
+import { signUp, signInWithGoogle } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -21,16 +20,11 @@ export default function SignupPage() {
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth) {
-      alert("Firebase is not configured. Please add your keys to .env.local");
-      return;
-    }
     setLoading(true);
     setError('');
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await createOrUpdateUserProfile(userCredential.user, name);
-      router.push('/onboarding');
+      await signUp(email, password, name);
+      router.push('/dashboard');
     } catch (err: any) {
       console.error("Error signing up:", err);
       setError(err.message || 'An error occurred during sign up.');
@@ -40,26 +34,17 @@ export default function SignupPage() {
   };
 
 
-  const handleGoogleSignIn = async () => {
-    if (!auth || !googleProvider) {
-      alert("Google Sign-In is not configured. Please add your Firebase keys to .env.local");
-      return;
-    }
+  const handleGoogleSignUp = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      await createOrUpdateUserProfile(result.user);
-      const { getUserProfile } = await import('@/lib/db/users');
-      const profile = await getUserProfile(result.user.uid);
-      if (profile?.hasJoinedCommunity) {
-        router.push('/dashboard');
-      } else {
-        router.push('/onboarding');
-      }
+      setLoading(true);
+      await signInWithGoogle();
     } catch (error: any) {
-      console.error("Error signing in with Google:", error);
-      alert(`Google Sign-In Error: ${error.message}\n\nPlease verify that Google Sign-in is explicitly ENABLED in your Firebase console under Authentication -> Sign-in methods, and that your authorized domains include your current local environment.`);
+      console.error("Error signing up with Google:", error);
+      setError(error.message || 'Failed to sign up with Google');
+      setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen pt-20 flex items-center justify-center px-6 relative overflow-hidden">
@@ -120,11 +105,12 @@ export default function SignupPage() {
           <div>
             <Button 
               type="button"
+              disabled={loading}
               variant="outline" 
-              onClick={handleGoogleSignIn}
+              onClick={handleGoogleSignUp}
               className="w-full rounded-2xl h-12 glass border-white/5 gap-2 hover:bg-white/5 transition-all active:scale-[0.98]"
             >
-              <Chrome className="w-4 h-4" /> Sign up with Google
+              <Chrome className="w-4 h-4" /> {loading ? 'Signing Up...' : 'Sign up with Google'}
             </Button>
           </div>
 
