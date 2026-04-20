@@ -2,11 +2,12 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Trophy, Users, Star, Target, ArrowUp, Zap, Calendar, Heart, X } from 'lucide-react';
+import { Trophy, Users, Star, Target, ArrowUp, Zap, Calendar, Heart, X, Loader } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { userAgent } from 'next/server';
 
 const challenges = [
   { id: 1, title: 'Plant 50 Trees', category: 'Growth', progress: 75, participants: 124, deadline: '5 days left', icon: Zap, description: 'Help reforest local parks and urban areas by planting native tree species.' },
@@ -30,10 +31,13 @@ const leaderboard = [
   { name: 'Stefan Salvatore', points: '9,850', rank: 3, img: 'https://picsum.photos/seed/user3/100/100' },
   { name: 'Bonnie Bennett', points: '8,400', rank: 4, img: 'https://picsum.photos/seed/user4/100/100' },
   { name: 'Caroline Forbes', points: '7,100', rank: 5, img: 'https://picsum.photos/seed/user5/100/100' },
-];
+]; 
 
 export default function CommunityPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // if (loggedOut) return <SignInPrompt />;
+  
   return (
     <div className="pt-24 pb-12 px-6 max-w-7xl mx-auto space-y-12">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
