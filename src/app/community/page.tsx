@@ -107,7 +107,7 @@ export default function CommunityPage() {
   const allDisplayActivities = activities;
 
   // Combine DB leaderboard with demo fallback
-  const displayLeaderboard = leaderboard.length > 0 
+  const displayLeaderboard = leaderboard.length > 0
     ? leaderboard.map((u, i) => ({ name: u.username, xp: u.xp, rank: i + 1, img: u.avatar_url }))
     : demoLeaderboard;
 
@@ -115,9 +115,8 @@ export default function CommunityPage() {
     const diff = new Date(startTime).getTime() - Date.now();
     const days = Math.ceil(diff / 86400000);
     if (days <= 0) return 'Active now';
-    return `${days} days left`;
+    return `${days} day${days === 1 ? '' : 's'} left`;
   };
-
   return (
     <div className="pt-24 pb-12 px-6 max-w-7xl mx-auto space-y-12">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -148,7 +147,7 @@ export default function CommunityPage() {
             <h2 className="text-2xl font-bold font-headline">Active Challenges</h2>
             <Button onClick={() => setIsModalOpen(true)} variant="link" className="text-primary p-0">Browse All</Button>
           </div>
-          
+
           <div className="space-y-4">
             {loading ? (
               <div className="glass w-full rounded-3xl border border-white/5 animate-pulse h-24 flex items-center px-8">
@@ -184,12 +183,12 @@ export default function CommunityPage() {
                           <div className="text-xs text-primary font-bold">🏆 {challenge.xp_reward} XP reward</div>
                         )}
                         <div className="flex justify-end">
-                          <Button 
-                            variant={joinedMap[challenge.id] ? "default" : "outline"} 
+                          <Button
+                            variant={joinedMap[challenge.id] ? "default" : "outline"}
                             className={cn(
                               "rounded-xl px-6 h-9 glass border-white/10",
-                              joinedMap[challenge.id] 
-                                ? "bg-primary/20 text-primary hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30" 
+                              joinedMap[challenge.id]
+                                ? "bg-primary/20 text-primary hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30"
                                 : "hover:bg-white/5"
                             )}
                             onClick={() => handleJoin(challenge.id)}
@@ -221,8 +220,8 @@ export default function CommunityPage() {
                     <div className={cn(
                       "w-6 h-6 flex items-center justify-center rounded-lg text-xs font-bold font-headline",
                       u.rank === 1 ? "bg-yellow-500/20 text-yellow-500" :
-                      u.rank === 2 ? "bg-slate-300/20 text-slate-300" :
-                      u.rank === 3 ? "bg-orange-500/20 text-orange-500" : "text-muted-foreground"
+                        u.rank === 2 ? "bg-slate-300/20 text-slate-300" :
+                          u.rank === 3 ? "bg-orange-500/20 text-orange-500" : "text-muted-foreground"
                     )}>
                       {u.rank}
                     </div>
@@ -293,7 +292,7 @@ export default function CommunityPage() {
                             <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {getDeadline(challenge.start_time)}</span>
                           </div>
                           <div className="flex justify-end pt-2">
-                            <Button 
+                            <Button
                               variant={joinedMap[challenge.id] ? "default" : "outline"}
                               className={cn(
                                 "rounded-xl px-6 h-9 glass border-white/10",

@@ -28,7 +28,7 @@ create table if not exists public.reports (
   category          text not null
                       check (category in ('air', 'water', 'garbage', 'noise')),
   status            text not null default 'Reported'
-                      check (status in ('Reported', 'Resolved', 'open', 'in_progress', 'needs_verification', 'resolved', 'rejected', 'archived')),
+                      check (status in ('Reported', 'Resolved')),
   location_text     text not null,
   latitude          numeric not null,
   longitude         numeric not null,
