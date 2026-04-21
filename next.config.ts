@@ -3,7 +3,6 @@ import path from 'path';
 
 const nextConfig: NextConfig = {
   /* config options here */
-  output: 'export',
   outputFileTracingRoot: path.join(__dirname),
   typescript: {
     ignoreBuildErrors: true,
