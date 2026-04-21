@@ -11,6 +11,8 @@ interface AuthContextType {
   profile: Profile | null;
   session: Session | null;
   loading: boolean;
+  communityId: string | null;
+  isOnboarded: boolean;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -20,6 +22,8 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   session: null,
   loading: true,
+  communityId: null,
+  isOnboarded: false,
   refreshProfile: async () => {},
   signOut: async () => {},
 });
@@ -29,6 +33,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const communityId = profile?.community_id ?? null;
+  const isOnboarded = Boolean(profile?.has_joined_community);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -81,7 +87,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchProfile]);
 
   return (
-    <AuthContext.Provider value={{ user, profile, session, loading, refreshProfile, signOut: handleSignOut }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        session,
+        loading,
+        communityId,
+        isOnboarded,
+        refreshProfile,
+        signOut: handleSignOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

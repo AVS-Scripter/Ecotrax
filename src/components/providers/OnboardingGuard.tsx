@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from './AuthProvider';
+import { useAuth } from '@/hooks/useAuth';
 
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { user, loading, isOnboarded } = useAuth();

@@ -17,10 +17,13 @@ export interface ReportImage {
 export interface Profile {
   id: string;
   username: string;
+  name?: string | null;
   avatar_url: string | null;
   xp: number;
   home_latitude: number | null;
   home_longitude: number | null;
+  community_id?: string | null;
+  has_joined_community?: boolean | null;
   created_at: string;
 }
 
