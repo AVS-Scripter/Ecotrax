@@ -197,6 +197,18 @@ export async function createReportUpdate(
 
 // ─── Update Report Status ───────────────────────────────────────────
 
+export async function updateReport(reportId: string, updates: Partial<CreateReportInput & { status: ReportStatus }>) {
+  const { data, error } = await supabase
+    .from('reports')
+    .update(updates)
+    .eq('id', reportId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Report;
+}
+
 export async function updateReportStatus(reportId: string, status: ReportStatus) {
   const updates: Record<string, unknown> = { status };
   if (status === 'Resolved' || status === 'resolved') {

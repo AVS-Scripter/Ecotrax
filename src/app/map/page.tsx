@@ -206,7 +206,7 @@ function MapContent() {
               <Button 
                 variant="default" 
                 className="flex-1 rounded-xl h-10 text-xs font-bold uppercase tracking-wider"
-                onClick={() => router.push(`/report/${selectedReport.reference_code}`)}
+                onClick={() => router.push(`/report?report=${selectedReport.reference_code}`)}
               >
                 View Full Details
               </Button>

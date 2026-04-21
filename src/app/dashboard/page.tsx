@@ -223,7 +223,7 @@ export default function Dashboard() {
               <div className="text-center text-muted-foreground py-8">No reports yet. Be the first to report an issue!</div>
             ) : (
               recentReports.map((report) => (
-                <div key={report.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-pointer" onClick={() => router.push(`/report/${report.reference_code}`)}>
+                <div key={report.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-pointer" onClick={() => router.push(`/report?report=${report.reference_code}`)}>
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center border border-white/5">
                       {report.category === 'air' && <Wind className="w-5 h-5 text-blue-400" />}
