@@ -8,17 +8,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { getReportByRef, createReportUpdate, getReports } from '@/lib/reports';
+import { getReportByRef, createReportUpdate } from '@/lib/reports';
 import type { ReportWithProfile } from '@/lib/database.types';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-
-export async function generateStaticParams() {
-  const reports = await getReports({ limit: 100 });
-  return reports.map((report) => ({
-    ref: report.reference_code,
-  }));
-}
 
 export default function ReportDetailPage({ params }: { params: { ref: string } }) {
   const router = useRouter();
