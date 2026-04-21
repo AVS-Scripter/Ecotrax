@@ -185,15 +185,20 @@ export default function CommunityPage() {
                         <div className="flex justify-end">
                           <Button
                             variant={joinedMap[challenge.id] ? "default" : "outline"}
+                            disabled={challenge.id.startsWith('demo-')}
                             className={cn(
                               "rounded-xl px-6 h-9 glass border-white/10",
+                              challenge.id.startsWith('demo-') ? "opacity-50 cursor-not-allowed" :
                               joinedMap[challenge.id]
                                 ? "bg-primary/20 text-primary hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30"
                                 : "hover:bg-white/5"
                             )}
-                            onClick={() => handleJoin(challenge.id)}
+                            onClick={() => {
+                                if (challenge.id.startsWith('demo-')) return;
+                                handleJoin(challenge.id);
+                            }}
                           >
-                            {joinedMap[challenge.id] ? 'Leave Challenge' : 'Join Challenge'}
+                            {challenge.id.startsWith('demo-') ? 'Preview Only' : joinedMap[challenge.id] ? 'Leave Challenge' : 'Join Challenge'}
                           </Button>
                         </div>
                       </div>
@@ -253,7 +258,7 @@ export default function CommunityPage() {
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Ecotrax is a non-profit open data platform. Help us keep the servers running and sensors deployed.
               </p>
-              <Button size="sm" className="w-full rounded-xl bg-white dark:bg-white text-background hover:bg-white/90">Donate Now</Button>
+              <Button size="sm" variant="outline" disabled className="w-full rounded-xl bg-white/5 text-muted-foreground border-white/10 uppercase tracking-widest text-xs">Donate Comming Soon</Button>
             </div>
           </div>
         </div>
@@ -294,13 +299,18 @@ export default function CommunityPage() {
                           <div className="flex justify-end pt-2">
                             <Button
                               variant={joinedMap[challenge.id] ? "default" : "outline"}
+                              disabled={challenge.id.startsWith('demo-')}
                               className={cn(
                                 "rounded-xl px-6 h-9 glass border-white/10",
+                                challenge.id.startsWith('demo-') ? "opacity-50 cursor-not-allowed" :
                                 joinedMap[challenge.id] ? "bg-primary/20 text-primary" : "hover:bg-white/5"
                               )}
-                              onClick={() => handleJoin(challenge.id)}
+                              onClick={() => {
+                                  if (challenge.id.startsWith('demo-')) return;
+                                  handleJoin(challenge.id);
+                              }}
                             >
-                              {joinedMap[challenge.id] ? 'Joined ✓' : 'Join Challenge'}
+                              {challenge.id.startsWith('demo-') ? 'Preview Only' : joinedMap[challenge.id] ? 'Joined ✓' : 'Join Challenge'}
                             </Button>
                           </div>
                         </div>

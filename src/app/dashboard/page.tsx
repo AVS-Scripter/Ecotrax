@@ -16,6 +16,7 @@ import { getReportStats, getReports } from '@/lib/reports';
 import { supabase } from '@/lib/supabase';
 import type { ReportWithProfile } from '@/lib/database.types';
 import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
 
 const COLORS = ['#00FF9F', '#5AD8A7', '#1E4D40', '#42B883'];
 
@@ -24,7 +25,9 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ total: 0, reported: 0, resolved: 0 });
   const [recentReports, setRecentReports] = useState<ReportWithProfile[]>([]);
   const [categoryData, setCategoryData] = useState<{ name: string; value: number }[]>([]);
+  const [lineData, setLineData] = useState<{ name: string; reports: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     loadDashboardData();
@@ -53,6 +56,27 @@ export default function Dashboard() {
         })
       );
       setCategoryData(catCounts);
+      // Calculate monthly report counts for the last 6 months
+      const { data: allReports } = await supabase.from('reports').select('created_at').order('created_at', { ascending: false });
+      if (allReports) {
+        const last6Months: {name: string, year: number, month: number, reports: number}[] = [];
+        const now = new Date();
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          last6Months.push({
+            name: d.toLocaleString('default', { month: 'short' }),
+            year: d.getFullYear(),
+            month: d.getMonth(),
+            reports: 0
+          });
+        }
+        allReports.forEach(r => {
+          const date = new Date(r.created_at);
+          const block = last6Months.find(m => m.year === date.getFullYear() && m.month === date.getMonth());
+          if (block) block.reports++;
+        });
+        setLineData(last6Months.map(b => ({ name: b.name, reports: b.reports })));
+      }
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
@@ -62,15 +86,7 @@ export default function Dashboard() {
 
   const totalCatValue = categoryData.reduce((s, d) => s + d.value, 0) || 1;
 
-  // Fallback line chart data (will use real monthly data once enough reports exist)
-  const lineData = [
-    { name: 'Jan', reports: 0 },
-    { name: 'Feb', reports: 0 },
-    { name: 'Mar', reports: 0 },
-    { name: 'Apr', reports: stats.total },
-    { name: 'May', reports: 0 },
-    { name: 'Jun', reports: 0 },
-  ];
+  // Line chart data is loaded dynamically
 
   const resolutionRate = stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0;
 
@@ -197,7 +213,7 @@ export default function Dashboard() {
             <CardTitle>Recent Reports</CardTitle>
             <CardDescription>Most recent environmental incidents logged by the community.</CardDescription>
           </div>
-          <Button variant="ghost" className="text-primary hover:bg-primary/10" onClick={() => window.location.href = '/report'}>View All</Button>
+          <Button variant="ghost" className="text-primary hover:bg-primary/10" onClick={() => router.push('/report')}>View All</Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -207,7 +223,7 @@ export default function Dashboard() {
               <div className="text-center text-muted-foreground py-8">No reports yet. Be the first to report an issue!</div>
             ) : (
               recentReports.map((report) => (
-                <div key={report.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-pointer" onClick={() => window.location.href = `/report`}>
+                <div key={report.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-pointer" onClick={() => router.push(`/report/${report.reference_code}`)}>
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center border border-white/5">
                       {report.category === 'air' && <Wind className="w-5 h-5 text-blue-400" />}

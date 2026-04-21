@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 import { 
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
 } from '@/components/ui/select';
@@ -48,6 +49,8 @@ export default function ReportPage() {
   const [loadingReports, setLoadingReports] = useState(true);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
+  const router = useRouter();
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -56,6 +59,21 @@ export default function ReportPage() {
       description: "",
     },
   });
+
+  const handleLocate = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          form.setValue("location", `Lat: ${pos.coords.latitude.toFixed(4)}, Lng: ${pos.coords.longitude.toFixed(4)}`);
+          toast({ title: 'Location captured' });
+        },
+        () => {
+          toast({ title: 'Location access denied', variant: 'destructive' });
+        }
+      );
+    }
+  };
 
   // Fetch reports on mount and when filters change
   useEffect(() => {
@@ -120,9 +138,14 @@ export default function ReportPage() {
         }
       }
 
-      // Use browser coords if available, otherwise use fallback
-      const lat = userCoords?.lat || 26.2183;
-      const lng = userCoords?.lng || 78.1828;
+      // Use browser coords if available, otherwise demand it
+      const lat = userCoords?.lat;
+      const lng = userCoords?.lng;
+
+      if (lat === undefined || lng === undefined) {
+         toast({ title: 'Location Required', description: 'Please tap the location pin to capture your exact coordinates.', variant: 'destructive' });
+         return;
+      }
 
       await createReport(user.id, {
         title: values.title,
@@ -131,7 +154,7 @@ export default function ReportPage() {
         location_text: values.location,
         latitude: lat,
         longitude: lng,
-        geolocation_source: userCoords ? 'browser' : 'fallback',
+        geolocation_source: 'browser',
         images,
       });
 
@@ -242,7 +265,7 @@ export default function ReportPage() {
             reports.map((report) => {
               const catInfo = categoryDisplayMap[report.category] || { label: `#${report.category}`, color: 'text-muted-foreground' };
               return (
-                <article key={report.id} className="glass p-6 rounded-3xl border border-white/10 shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all">
+                <article key={report.id} onClick={() => router.push(`/report/${report.reference_code}`)} className="cursor-pointer glass p-6 rounded-3xl border border-white/10 shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all">
                   <div>
                     <div className="flex items-start justify-between mb-2 gap-2">
                       <h3 className="text-lg font-bold leading-tight line-clamp-1">{report.title}</h3>
@@ -338,9 +361,14 @@ export default function ReportPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-semibold">Location</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Main Street Park" className="bg-white/5 border-white/10 rounded-xl h-11" {...field} />
-                      </FormControl>
+                      <div className="flex gap-2">
+                        <FormControl>
+                          <Input placeholder="Main Street Park" className="bg-white/5 border-white/10 rounded-xl h-11 flex-1" {...field} />
+                        </FormControl>
+                        <Button type="button" variant="outline" className="h-11 rounded-xl px-3 border-white/10" onClick={handleLocate} title="Use Current Location">
+                          <MapPin className="w-5 h-5 text-primary" />
+                        </Button>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}

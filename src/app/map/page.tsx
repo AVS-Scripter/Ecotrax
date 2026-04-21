@@ -20,9 +20,12 @@ import { LocationPermissionDialog } from '@/components/map/LocationPermissionDia
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from '@/components/providers/LocationProvider';
 
+import { useRouter } from 'next/navigation';
+
 // Types for our reports
 interface Report {
   id: string;
+  reference_code: string;
   title: string;
   category: string;
   description: string;
@@ -44,11 +47,13 @@ export default function MapPage() {
 function MapContent() {
   const { toast } = useToast();
   const map = useMap();
+  const router = useRouter();
   const { coordinates: cachedCoords, syncLocation } = useLocation();
   
   const [reports, setReports] = useState<Report[]>([]);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(cachedCoords);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
@@ -127,10 +132,15 @@ function MapContent() {
   }, [map, toast, syncLocation]);
 
   const filteredReports = useMemo(() => {
-    return reports.filter(report => 
-      activeFilter === 'all' || report.category === activeFilter
-    );
-  }, [reports, activeFilter]);
+    return reports.filter(report => {
+      const categoryMatch = activeFilter === 'all' || report.category === activeFilter;
+      const searchMatch = searchQuery === '' || 
+        report.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        report.location_text?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        report.category.toLowerCase().includes(searchQuery.toLowerCase());
+      return categoryMatch && searchMatch;
+    });
+  }, [reports, activeFilter, searchQuery]);
 
   return (
     <div className="h-[100vh] pt-20 flex relative overflow-hidden bg-[#0c1410]">
@@ -140,7 +150,12 @@ function MapContent() {
           <div className="space-y-1">
             <h2 className="text-sm font-bold uppercase tracking-widest text-primary ml-1">Live Feed</h2>
             <div className="relative">
-              <Input placeholder="Search locations..." className="bg-white/10 border-white/20 rounded-xl pl-10 h-11 focus:ring-primary/50 text-foreground placeholder:text-foreground/50" />
+              <Input 
+                placeholder="Search locations..." 
+                className="bg-white/10 border-white/20 rounded-xl pl-10 h-11 focus:ring-primary/50 text-foreground placeholder:text-foreground/50" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/70" />
             </div>
           </div>
@@ -188,8 +203,25 @@ function MapContent() {
               <span className="text-primary font-bold mt-2 block text-xs">Location: {selectedReport.location_text}</span>
             </p>
             <div className="flex gap-2">
-              <Button variant="default" className="flex-1 rounded-xl h-10 text-xs font-bold uppercase tracking-wider">View Full Details</Button>
-              <Button variant="outline" className="rounded-xl h-10 px-3 border-white/10"><Info className="w-4 h-4" /></Button>
+              <Button 
+                variant="default" 
+                className="flex-1 rounded-xl h-10 text-xs font-bold uppercase tracking-wider"
+                onClick={() => router.push(`/report/${selectedReport.reference_code}`)}
+              >
+                View Full Details
+              </Button>
+              <Button 
+                variant="outline" 
+                className="rounded-xl h-10 px-3 border-white/10"
+                onClick={() => {
+                  if (map && selectedReport.latitude && selectedReport.longitude) {
+                    map.panTo({ lat: selectedReport.latitude, lng: selectedReport.longitude });
+                    map.setZoom(16);
+                  }
+                }}
+              >
+                <Locate className="w-4 h-4" />
+              </Button>
             </div>
           </div>
         )}
