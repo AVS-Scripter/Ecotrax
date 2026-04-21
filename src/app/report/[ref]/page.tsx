@@ -13,6 +13,15 @@ import type { ReportWithProfile } from '@/lib/database.types';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
+import { getReports } from '@/lib/reports';
+
+export async function generateStaticParams() {
+  const reports = await getReports({ limit: 100 });
+  return reports.map((report) => ({
+    ref: report.reference_code,
+  }));
+}
+
 export default function ReportDetailPage({ params }: { params: { ref: string } }) {
   const router = useRouter();
   const { user } = useAuth();
